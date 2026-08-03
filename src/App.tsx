@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { HashRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { Home } from './pages/Home'
 import { CategoryDraw } from './pages/CategoryDraw'
 import { Progress } from './pages/Progress'
@@ -29,12 +29,12 @@ function AnimatedRoutes() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <div className="min-h-screen bg-cream pb-20 dark:bg-neutral-950">
         <AnimatedRoutes />
         <BottomNav />
       </div>
-    </BrowserRouter>
+    </HashRouter>
   )
 }
 
