@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Quicksand', 'Nunito', sans-serif;
+}
+
+.font-display {
+  font-family: 'Archivo Black', 'Poppins', sans-serif;
+}
+
+.font-rounded {
+  font-family: 'Quicksand', 'Nunito', sans-serif;
+}

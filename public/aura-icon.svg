@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="12" fill="#F5EFDE"/>
+  <rect y="40" width="64" height="24" rx="0" fill="#F0501E"/>
+  <text x="32" y="26" font-family="Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="2" text-anchor="middle" fill="#111111">AURA</text>
+</svg>
