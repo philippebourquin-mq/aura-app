@@ -1,22 +1,65 @@
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { categories } from '../data/categories'
+import { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { ArrowLeft } from 'lucide-react'
+import { categories, categoryById } from '../data/categories'
 import { challenges, challengesByCategory } from '../data/challenges'
 import { useGameState } from '../state/useGameState'
 import { AuraGauge } from '../components/AuraGauge'
 import { CurrentRun } from '../components/CurrentRun'
 import { RoleSwitcher } from '../components/RoleSwitcher'
+import { ChallengePicker } from '../components/ChallengePicker'
 import { categoryIcons } from '../lib/categoryIcons'
+import type { CategoryId } from '../types'
 
 export function Home() {
   const game = useGameState()
   const { state } = game
+  const [browsing, setBrowsing] = useState<CategoryId | null>(null)
 
   const totalPoints = challenges
     .filter((c) => state.validatedChallengeIds.includes(c.id))
     .reduce((sum, c) => sum + c.points, 0)
 
   const canPickFreely = state.role === 'lucas' && !state.currentRun
+  const browsingCategory = browsing ? categoryById(browsing) : null
+
+  // Free-choice browsing happens inline, right here on the home screen — no page navigation.
+  if (canPickFreely && browsingCategory) {
+    const Icon = categoryIcons[browsingCategory.id]
+    return (
+      <div>
+        <RoleSwitcher role={state.role} onChange={game.setRole} showProfileLink />
+        <div className="mx-auto max-w-lg px-6 pt-4 pb-10">
+          <button
+            onClick={() => setBrowsing(null)}
+            className="font-rounded mb-6 inline-flex items-center gap-1 text-sm text-black/60 hover:text-black dark:text-cream/60 dark:hover:text-cream"
+          >
+            <ArrowLeft size={16} /> Retour aux thèmes
+          </button>
+
+          <div
+            className="mb-8 flex items-center justify-center gap-3 rounded-card px-5 py-4 text-center"
+            style={{ backgroundColor: browsingCategory.hex }}
+          >
+            <Icon size={22} className="text-black/70" />
+            <div>
+              <h1 className="font-display text-2xl text-black">{browsingCategory.name}</h1>
+              <p className="font-rounded text-sm text-black/70">{browsingCategory.tagline}</p>
+            </div>
+          </div>
+
+          <ChallengePicker
+            validatedChallengeIds={state.validatedChallengeIds}
+            lockedCategoryId={browsingCategory.id}
+            onPick={(id) => {
+              game.lucasPickChallenge(id)
+              setBrowsing(null)
+            }}
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -37,7 +80,17 @@ export function Home() {
         <AuraGauge points={totalPoints} />
 
         <div className="mt-6">
-          <CurrentRun game={game} />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={state.currentRun?.id ?? 'idle'}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <CurrentRun game={game} />
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         <div className="mt-8">
@@ -94,12 +147,12 @@ export function Home() {
                   whileTap={locked ? undefined : { scale: 0.96 }}
                 >
                   {state.role === 'lucas' && !locked ? (
-                    <Link
-                      to={`/categorie/${category.id}`}
-                      className="flex h-full flex-col justify-between rounded-card border border-black/10 bg-white/60 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-white/10 dark:bg-white/5"
+                    <button
+                      onClick={() => setBrowsing(category.id)}
+                      className="flex h-full w-full flex-col justify-between rounded-card border border-black/10 bg-white/60 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-white/10 dark:bg-white/5"
                     >
                       {content}
-                    </Link>
+                    </button>
                   ) : (
                     <div className="flex h-full flex-col justify-between rounded-card border border-black/10 bg-white/60 p-4 opacity-60 dark:border-white/10 dark:bg-white/5">
                       {content}

@@ -1,7 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { HashRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { Home } from './pages/Home'
-import { CategoryDraw } from './pages/CategoryDraw'
 import { Progress } from './pages/Progress'
 
 function AnimatedRoutes() {
@@ -18,7 +17,6 @@ function AnimatedRoutes() {
       >
         <Routes location={location}>
           <Route path="/" element={<Home />} />
-          <Route path="/categorie/:categoryId" element={<CategoryDraw />} />
           <Route path="/progression" element={<Progress />} />
         </Routes>
       </motion.div>

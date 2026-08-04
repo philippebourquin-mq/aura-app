@@ -6,14 +6,35 @@ export interface Level {
   name: string
   emoji: string
   minPoints: number
+  blurb: string
 }
 
 export const levels: Level[] = [
-  { name: "Graine d'Aura", emoji: '🌱', minPoints: 0 },
-  { name: 'Aura en éveil', emoji: '✨', minPoints: Math.round(TOTAL_POSSIBLE_POINTS * 0.15) },
-  { name: 'Aura confiante', emoji: '💪', minPoints: Math.round(TOTAL_POSSIBLE_POINTS * 0.35) },
-  { name: 'Aura affirmée', emoji: '🔥', minPoints: Math.round(TOTAL_POSSIBLE_POINTS * 0.55) },
-  { name: 'Pleine Aura', emoji: '👑', minPoints: Math.round(TOTAL_POSSIBLE_POINTS * 0.8) },
+  { name: "Graine d'Aura", emoji: '🌱', minPoints: 0, blurb: "Le tout début de l'aventure." },
+  {
+    name: 'Aura en éveil',
+    emoji: '✨',
+    minPoints: Math.round(TOTAL_POSSIBLE_POINTS * 0.15),
+    blurb: 'Tu commences à sortir de ta zone de confort.',
+  },
+  {
+    name: 'Aura confiante',
+    emoji: '💪',
+    minPoints: Math.round(TOTAL_POSSIBLE_POINTS * 0.35),
+    blurb: 'Ça devient naturel.',
+  },
+  {
+    name: 'Aura affirmée',
+    emoji: '🔥',
+    minPoints: Math.round(TOTAL_POSSIBLE_POINTS * 0.55),
+    blurb: 'Tu assumes qui tu es.',
+  },
+  {
+    name: 'Pleine Aura',
+    emoji: '👑',
+    minPoints: Math.round(TOTAL_POSSIBLE_POINTS * 0.8),
+    blurb: "Le sommet. Rien ne t'arrête.",
+  },
 ]
 
 export function getLevelProgress(points: number) {
