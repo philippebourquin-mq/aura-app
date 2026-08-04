@@ -87,7 +87,7 @@ export function CurrentRun({ game }: { game: Game }) {
   if (run.status === 'awaiting-card') {
     if (state.role === 'team') {
       return (
-        <div className="rounded-card border border-black/10 bg-white/70 p-5 dark:border-white/10 dark:bg-white/5">
+        <div>
           <p className="font-rounded mb-4 text-center text-sm font-semibold text-black dark:text-cream">
             Choisis une carte pour Lucas — thème « {category?.name} »
           </p>

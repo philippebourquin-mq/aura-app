@@ -37,14 +37,16 @@ export function Home() {
             <ArrowLeft size={16} /> Retour aux thèmes
           </button>
 
-          <div
-            className="mb-8 flex items-center justify-center gap-3 rounded-card px-5 py-4 text-center"
-            style={{ backgroundColor: browsingCategory.hex }}
-          >
-            <Icon size={22} className="text-black/70" />
-            <div>
-              <h1 className="font-display text-2xl text-black">{browsingCategory.name}</h1>
-              <p className="font-rounded text-sm text-black/70">{browsingCategory.tagline}</p>
+          <div className="mb-8 flex items-center justify-center gap-3 text-center">
+            <div
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full"
+              style={{ backgroundColor: browsingCategory.hex }}
+            >
+              <Icon size={20} className="text-black/70" />
+            </div>
+            <div className="text-left">
+              <h1 className="font-display text-2xl text-black dark:text-cream">{browsingCategory.name}</h1>
+              <p className="font-rounded text-sm text-black/60 dark:text-cream/60">{browsingCategory.tagline}</p>
             </div>
           </div>
 

@@ -36,7 +36,7 @@ export function AuraGauge({ points }: Props) {
     <>
       <button
         onClick={() => setShowPath(true)}
-        className="group relative block w-full overflow-hidden rounded-[2rem] border border-black/10 bg-gradient-to-br from-white/90 via-cream to-amber-100/40 p-6 text-center shadow-[0_20px_45px_-24px_rgba(0,0,0,0.35)] transition hover:shadow-[0_24px_55px_-20px_rgba(0,0,0,0.4)] dark:border-white/10 dark:from-white/10 dark:via-neutral-900 dark:to-neutral-900"
+        className="group relative block w-full py-2 text-center"
       >
         <div className="text-5xl drop-shadow-sm">{current.emoji}</div>
         <p className="font-display mt-2 text-2xl text-black dark:text-cream">{current.name}</p>
