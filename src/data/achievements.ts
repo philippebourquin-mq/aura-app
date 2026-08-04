@@ -12,7 +12,7 @@ export interface Achievement {
 
 function validatedCount(state: GameState, categoryId?: string) {
   const pool = categoryId ? challengesByCategory(categoryId) : challenges
-  return pool.filter((c) => state.challengeStates[c.id]?.status === 'validated').length
+  return pool.filter((c) => state.validatedChallengeIds.includes(c.id)).length
 }
 
 export const achievements: Achievement[] = [

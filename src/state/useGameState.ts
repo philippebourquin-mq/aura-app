@@ -1,41 +1,42 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { ChallengeStatus, JokerId } from '../types'
-import { challenges } from '../data/challenges'
+import type { ChallengeRun, HistoryEntry, JokerId, Role } from '../types'
+import { challenges, challengesByCategory } from '../data/challenges'
 
-const STORAGE_KEY = 'aura-game-state-v1'
-
-export interface ChallengeState {
-  status: ChallengeStatus
-  completedAt?: string
-}
+const STORAGE_KEY = 'aura-game-state-v2'
 
 export interface GameState {
-  challengeStates: Record<string, ChallengeState>
+  role: Role
+  currentRun: ChallengeRun | null
+  validatedChallengeIds: string[]
   jokersUsed: JokerId[]
+  history: HistoryEntry[]
 }
 
 const initialState = (): GameState => ({
-  challengeStates: Object.fromEntries(
-    challenges.map((c) => [c.id, { status: 'todo' as ChallengeStatus }]),
-  ),
+  role: 'lucas',
+  currentRun: null,
+  validatedChallengeIds: [],
   jokersUsed: [],
+  history: [],
 })
 
 function loadState(): GameState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return initialState()
-    const parsed = JSON.parse(raw) as GameState
-    // merge with defaults in case new challenges were added since last save
-    const merged = initialState()
-    for (const [id, state] of Object.entries(parsed.challengeStates ?? {})) {
-      if (merged.challengeStates[id]) merged.challengeStates[id] = state
-    }
-    merged.jokersUsed = parsed.jokersUsed ?? []
-    return merged
+    const parsed = JSON.parse(raw) as Partial<GameState>
+    return { ...initialState(), ...parsed }
   } catch {
     return initialState()
   }
+}
+
+function uid() {
+  return Math.random().toString(36).slice(2, 10)
+}
+
+export function availableChallenges(validatedChallengeIds: string[]) {
+  return challenges.filter((c) => !validatedChallengeIds.includes(c.id))
 }
 
 export function useGameState() {
@@ -45,43 +46,173 @@ export function useGameState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   }, [state])
 
-  const markPending = useCallback((challengeId: string) => {
-    setState((s) => ({
-      ...s,
-      challengeStates: {
-        ...s.challengeStates,
-        [challengeId]: { status: 'pending', completedAt: new Date().toISOString() },
-      },
-    }))
+  const setRole = useCallback((role: Role) => {
+    setState((s) => ({ ...s, role }))
   }, [])
 
-  const validate = useCallback((challengeId: string) => {
-    setState((s) => ({
-      ...s,
-      challengeStates: {
-        ...s.challengeStates,
-        [challengeId]: { ...s.challengeStates[challengeId], status: 'validated' },
-      },
-    }))
+  /** Team member kicks off "I want to challenge Lucas" — Flow B, step 1. */
+  const teamStartChallenge = useCallback(() => {
+    setState((s) => {
+      if (s.currentRun) return s
+      const run: ChallengeRun = {
+        id: uid(),
+        origin: 'team',
+        status: 'awaiting-category',
+        createdAt: new Date().toISOString(),
+      }
+      return { ...s, currentRun: run }
+    })
   }, [])
 
-  const reject = useCallback((challengeId: string) => {
-    setState((s) => ({
-      ...s,
-      challengeStates: {
-        ...s.challengeStates,
-        [challengeId]: { status: 'todo' },
-      },
-    }))
+  /** Lucas picks the theme for a team-thrown challenge — Flow B, step 2. */
+  const lucasPickTheme = useCallback((categoryId: import('../types').CategoryId) => {
+    setState((s) => {
+      if (!s.currentRun || s.currentRun.origin !== 'team' || s.currentRun.status !== 'awaiting-category') {
+        return s
+      }
+      return {
+        ...s,
+        currentRun: { ...s.currentRun, categoryId, status: 'awaiting-card' },
+      }
+    })
   }, [])
 
-  const consumeJoker = useCallback((jokerId: JokerId) => {
-    setState((s) => ({ ...s, jokersUsed: [...new Set([...s.jokersUsed, jokerId])] }))
+  /** Team picks the specific card within the chosen theme — Flow B, step 3. */
+  const teamAssignCard = useCallback((challengeId: string) => {
+    setState((s) => {
+      if (!s.currentRun || s.currentRun.origin !== 'team' || s.currentRun.status !== 'awaiting-card') {
+        return s
+      }
+      return {
+        ...s,
+        currentRun: { ...s.currentRun, challengeId, status: 'in-progress' },
+      }
+    })
+  }, [])
+
+  /** Lucas freely picks any available challenge — Flow A, step 1. Only when no run is active. */
+  const lucasPickChallenge = useCallback((challengeId: string) => {
+    setState((s) => {
+      if (s.currentRun) return s
+      const challenge = challenges.find((c) => c.id === challengeId)
+      if (!challenge) return s
+      const run: ChallengeRun = {
+        id: uid(),
+        origin: 'lucas',
+        status: 'in-progress',
+        categoryId: challenge.categoryId,
+        challengeId: challenge.id,
+        createdAt: new Date().toISOString(),
+      }
+      return { ...s, currentRun: run }
+    })
+  }, [])
+
+  /** Switch joker: swap for another available card in the same category, self-service. */
+  const switchCard = useCallback(() => {
+    setState((s) => {
+      if (!s.currentRun || s.currentRun.status !== 'in-progress' || !s.currentRun.categoryId) return s
+      if (s.jokersUsed.includes('switch')) return s
+      const pool = challengesByCategory(s.currentRun.categoryId).filter(
+        (c) => !s.validatedChallengeIds.includes(c.id) && c.id !== s.currentRun?.challengeId,
+      )
+      if (pool.length === 0) return s
+      const next = pool[Math.floor(Math.random() * pool.length)]
+      return {
+        ...s,
+        jokersUsed: [...s.jokersUsed, 'switch'],
+        currentRun: { ...s.currentRun, challengeId: next.id },
+      }
+    })
+  }, [])
+
+  /** Boomerang / Flemme: close the current run without penalty, challenge stays available. */
+  const closeWithJoker = useCallback((jokerId: 'boomerang' | 'flemme') => {
+    setState((s) => {
+      if (!s.currentRun || s.currentRun.status !== 'in-progress') return s
+      if (s.jokersUsed.includes(jokerId)) return s
+      const entry: HistoryEntry = {
+        id: uid(),
+        origin: s.currentRun.origin,
+        outcome: 'skipped',
+        challengeId: s.currentRun.challengeId,
+        categoryId: s.currentRun.categoryId,
+        jokerUsed: jokerId,
+        at: new Date().toISOString(),
+      }
+      return {
+        ...s,
+        jokersUsed: [...s.jokersUsed, jokerId],
+        currentRun: null,
+        history: [entry, ...s.history],
+      }
+    })
+  }, [])
+
+  /** Lucas marks the active challenge done — awaiting team validation. */
+  const lucasSubmit = useCallback(() => {
+    setState((s) => {
+      if (!s.currentRun || s.currentRun.status !== 'in-progress') return s
+      return {
+        ...s,
+        currentRun: { ...s.currentRun, status: 'submitted', submittedAt: new Date().toISOString() },
+      }
+    })
+  }, [])
+
+  const teamValidate = useCallback(() => {
+    setState((s) => {
+      if (!s.currentRun || s.currentRun.status !== 'submitted' || !s.currentRun.challengeId) return s
+      const challenge = challenges.find((c) => c.id === s.currentRun?.challengeId)
+      const entry: HistoryEntry = {
+        id: uid(),
+        origin: s.currentRun.origin,
+        outcome: 'validated',
+        challengeId: s.currentRun.challengeId,
+        categoryId: s.currentRun.categoryId,
+        points: challenge?.points,
+        at: new Date().toISOString(),
+      }
+      return {
+        ...s,
+        validatedChallengeIds: [...s.validatedChallengeIds, s.currentRun.challengeId],
+        currentRun: null,
+        history: [entry, ...s.history],
+      }
+    })
+  }, [])
+
+  const teamReject = useCallback(() => {
+    setState((s) => {
+      if (!s.currentRun || s.currentRun.status !== 'submitted') return s
+      const entry: HistoryEntry = {
+        id: uid(),
+        origin: s.currentRun.origin,
+        outcome: 'rejected',
+        challengeId: s.currentRun.challengeId,
+        categoryId: s.currentRun.categoryId,
+        at: new Date().toISOString(),
+      }
+      return { ...s, currentRun: null, history: [entry, ...s.history] }
+    })
   }, [])
 
   const reset = useCallback(() => {
     setState(initialState())
   }, [])
 
-  return { state, markPending, validate, reject, consumeJoker, reset }
+  return {
+    state,
+    setRole,
+    teamStartChallenge,
+    lucasPickTheme,
+    teamAssignCard,
+    lucasPickChallenge,
+    switchCard,
+    closeWithJoker,
+    lucasSubmit,
+    teamValidate,
+    teamReject,
+    reset,
+  }
 }

@@ -1,83 +1,115 @@
+import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { categories } from '../data/categories'
 import { challenges, challengesByCategory } from '../data/challenges'
 import { useGameState } from '../state/useGameState'
 import { AuraGauge } from '../components/AuraGauge'
+import { CurrentRun } from '../components/CurrentRun'
+import { RoleSwitcher } from '../components/RoleSwitcher'
 import { categoryIcons } from '../lib/categoryIcons'
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
 
 export function Home() {
-  const { state } = useGameState()
+  const game = useGameState()
+  const { state } = game
 
   const totalPoints = challenges
-    .filter((c) => state.challengeStates[c.id]?.status === 'validated')
+    .filter((c) => state.validatedChallengeIds.includes(c.id))
     .reduce((sum, c) => sum + c.points, 0)
 
+  const canPickFreely = state.role === 'lucas' && !state.currentRun
+
   return (
-    <div className="mx-auto max-w-4xl px-5 pt-8">
-      <header className="mb-8 text-center">
-        <h1 className="font-display text-3xl tracking-[0.3em] text-black dark:text-cream">
-          A U R A
-        </h1>
-        <p className="font-rounded mx-auto mt-2 max-w-sm text-sm text-black/60 dark:text-cream/60">
-          Enchaîne les défis des 5 catégories. Ton but : plus confiant, plus toi, plus d'aura
-          auprès des autres.
-        </p>
-      </header>
+    <div>
+      <RoleSwitcher role={state.role} onChange={game.setRole} />
 
-      <AuraGauge points={totalPoints} />
+      <div className="mx-auto max-w-4xl px-5 pt-4">
+        <header className="mb-6 text-center">
+          <h1 className="font-display text-3xl tracking-[0.3em] text-black dark:text-cream">
+            A U R A
+          </h1>
+          <p className="font-rounded mx-auto mt-2 max-w-sm text-sm text-black/60 dark:text-cream/60">
+            {state.role === 'lucas'
+              ? "Choisis un défi, ou attends que ta team t'en lance un."
+              : "Suis la progression de Lucas, lance-lui un défi ou valide ce qu'il a fait."}
+          </p>
+        </header>
 
-      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
-        {categories.map((category, i) => {
-          const list = challengesByCategory(category.id)
-          const done = list.filter(
-            (c) => state.challengeStates[c.id]?.status === 'validated',
-          ).length
-          const pct = Math.round((done / list.length) * 100)
-          const Icon = categoryIcons[category.id]
+        <AuraGauge points={totalPoints} />
 
-          return (
-            <motion.div
-              key={category.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05, duration: 0.3 }}
-              whileTap={{ scale: 0.96 }}
-            >
-              <Link
-                to={`/categorie/${category.id}`}
-                className="group flex h-full flex-col justify-between rounded-card border border-black/10 bg-white/60 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-white/10 dark:bg-white/5"
-              >
-                <div>
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-full"
-                    style={{ backgroundColor: category.hex }}
-                  >
-                    <Icon size={20} className="text-black" />
-                  </div>
-                  <h3 className="font-display mt-3 text-base leading-tight text-black dark:text-cream">
-                    {category.name}
-                  </h3>
-                  <p className="font-rounded mt-1 text-xs text-black/50 dark:text-cream/50">
-                    {category.tagline}
-                  </p>
-                </div>
+        <div className="mt-6">
+          <CurrentRun game={game} />
+        </div>
 
-                <div className="mt-4">
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+        <div className="mt-8">
+          {canPickFreely && (
+            <p className="font-rounded mb-3 text-center text-sm font-semibold text-black/70 dark:text-cream/70">
+              Ou choisis toi-même un défi par thème :
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            {categories.map((category, i) => {
+              const list = challengesByCategory(category.id)
+              const done = list.filter((c) => state.validatedChallengeIds.includes(c.id)).length
+              const pct = Math.round((done / list.length) * 100)
+              const Icon = categoryIcons[category.id]
+              const locked = state.role === 'lucas' && !!state.currentRun
+
+              const content = (
+                <>
+                  <div>
                     <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${pct}%`, backgroundColor: category.hex }}
-                    />
+                      className="flex h-10 w-10 items-center justify-center rounded-full"
+                      style={{ backgroundColor: category.hex }}
+                    >
+                      <Icon size={20} className="text-black" />
+                    </div>
+                    <h3 className="font-display mt-3 text-base leading-tight text-black dark:text-cream">
+                      {category.name}
+                    </h3>
+                    <p className="font-rounded mt-1 text-xs text-black/50 dark:text-cream/50">
+                      {category.tagline}
+                    </p>
                   </div>
-                  <p className="font-rounded mt-1 text-[11px] text-black/40 dark:text-cream/40">
-                    {done}/{list.length} validés
-                  </p>
-                </div>
-              </Link>
-            </motion.div>
-          )
-        })}
+
+                  <div className="mt-4">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, backgroundColor: category.hex }}
+                      />
+                    </div>
+                    <p className="font-rounded mt-1 text-[11px] text-black/40 dark:text-cream/40">
+                      {done}/{list.length} validés
+                    </p>
+                  </div>
+                </>
+              )
+
+              return (
+                <motion.div
+                  key={category.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0, filter: locked ? 'grayscale(60%)' : 'grayscale(0%)' }}
+                  transition={{ delay: i * 0.05, duration: 0.3 }}
+                  whileTap={locked ? undefined : { scale: 0.96 }}
+                >
+                  {state.role === 'lucas' && !locked ? (
+                    <Link
+                      to={`/categorie/${category.id}`}
+                      className="flex h-full flex-col justify-between rounded-card border border-black/10 bg-white/60 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-white/10 dark:bg-white/5"
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <div className="flex h-full flex-col justify-between rounded-card border border-black/10 bg-white/60 p-4 opacity-60 dark:border-white/10 dark:bg-white/5">
+                      {content}
+                    </div>
+                  )}
+                </motion.div>
+              )
+            })}
+          </div>
+        </div>
       </div>
     </div>
   )

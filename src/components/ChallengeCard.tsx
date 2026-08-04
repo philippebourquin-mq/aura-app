@@ -1,28 +1,28 @@
 import { motion } from 'framer-motion'
-import type { Challenge, ChallengeStatus } from '../types'
+import type { Challenge } from '../types'
 import { categoryById } from '../data/categories'
 import { categoryIcons } from '../lib/categoryIcons'
-import { CheckCircle2, Clock3, RotateCcw } from 'lucide-react'
+import { CheckCircle2, Clock3 } from 'lucide-react'
+
+export type ChallengeCardBadge = 'submitted' | 'validated' | null
 
 interface Props {
   challenge: Challenge
-  status: ChallengeStatus
-  onMarkDone?: () => void
+  badge?: ChallengeCardBadge
+  actionLabel?: string
+  onAction?: () => void
 }
 
-const statusBadge: Record<ChallengeStatus, { label: string; icon: React.ReactNode }> = {
-  todo: { label: 'à faire', icon: null },
-  pending: { label: 'à valider', icon: <Clock3 size={14} /> },
+const badgeMap: Record<Exclude<ChallengeCardBadge, null>, { label: string; icon: React.ReactNode }> = {
+  submitted: { label: 'à valider', icon: <Clock3 size={14} /> },
   validated: { label: 'validé', icon: <CheckCircle2 size={14} /> },
-  rejected: { label: 'remis en jeu', icon: <RotateCcw size={14} /> },
 }
 
-export function ChallengeCard({ challenge, status, onMarkDone }: Props) {
+export function ChallengeCard({ challenge, badge = null, actionLabel, onAction }: Props) {
   const category = categoryById(challenge.categoryId)
   if (!category) return null
 
   const Icon = categoryIcons[challenge.categoryId]
-  const badge = statusBadge[status]
 
   return (
     <div className="w-full max-w-xs overflow-hidden rounded-card border border-black/10 bg-cream shadow-lg shadow-black/5 dark:border-white/10 dark:bg-neutral-900">
@@ -58,20 +58,20 @@ export function ChallengeCard({ challenge, status, onMarkDone }: Props) {
           </span>
         </div>
 
-        {status !== 'todo' && (
+        {badge && (
           <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-black/60 dark:text-cream/60">
-            {badge.icon}
-            {badge.label}
+            {badgeMap[badge].icon}
+            {badgeMap[badge].label}
           </div>
         )}
 
-        {onMarkDone && status === 'todo' && (
+        {onAction && actionLabel && (
           <motion.button
             whileTap={{ scale: 0.95 }}
-            onClick={onMarkDone}
+            onClick={onAction}
             className="mt-4 w-full rounded-full bg-black py-2.5 text-sm font-semibold text-cream transition hover:bg-black/80"
           >
-            Je l'ai fait
+            {actionLabel}
           </motion.button>
         )}
       </div>

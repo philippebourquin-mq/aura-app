@@ -22,16 +22,47 @@ export interface Challenge {
   points: number
 }
 
-export type ChallengeStatus =
-  | 'todo' // not drawn / not attempted yet
-  | 'pending' // marked done by the player, awaiting validation
-  | 'validated' // approved by a parent
-  | 'rejected' // put back in the deck
-
 export type JokerId = 'switch' | 'boomerang' | 'flemme'
 
 export interface JokerDef {
   id: JokerId
   name: string
   effect: string
+}
+
+/** Who is using the app right now: the player, or someone validating/throwing challenges. */
+export type Role = 'lucas' | 'team'
+
+/** Who kicked off the current challenge run. */
+export type RunOrigin = 'lucas' | 'team'
+
+/**
+ * Lifecycle of the single active challenge slot.
+ *
+ * lucas flow:  (none) -> in-progress -> submitted -> (cleared, validated/rejected)
+ * team flow:   (none) -> awaiting-category -> awaiting-card -> in-progress -> submitted -> (cleared)
+ */
+export type RunStatus = 'awaiting-category' | 'awaiting-card' | 'in-progress' | 'submitted'
+
+export interface ChallengeRun {
+  id: string
+  origin: RunOrigin
+  status: RunStatus
+  categoryId?: CategoryId
+  challengeId?: string
+  createdAt: string
+  submittedAt?: string
+}
+
+export type HistoryOutcome = 'validated' | 'rejected' | 'skipped'
+
+export interface HistoryEntry {
+  id: string
+  origin: RunOrigin
+  outcome: HistoryOutcome
+  challengeId?: string
+  categoryId?: CategoryId
+  jokerUsed?: JokerId
+  points?: number
+  at: string
 }
