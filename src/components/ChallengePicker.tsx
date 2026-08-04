@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
+import { Check } from 'lucide-react'
 import { categories } from '../data/categories'
-import { categoryIcons } from '../lib/categoryIcons'
 import { availableChallenges } from '../state/useGameState'
-import type { CategoryId, Challenge } from '../types'
+import { ChallengeCard } from './ChallengeCard'
+import type { CategoryId } from '../types'
 
 interface Props {
   validatedChallengeIds: string[]
@@ -12,40 +13,9 @@ interface Props {
   onPick: (challengeId: string) => void
 }
 
-function MiniCard({ challenge, delay, onClick }: { challenge: Challenge; delay: number; onClick: () => void }) {
-  const category = categories.find((c) => c.id === challenge.categoryId)!
-  const Icon = categoryIcons[challenge.categoryId]
-
-  return (
-    <motion.button
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay }}
-      whileHover={{ y: -4 }}
-      whileTap={{ scale: 0.95 }}
-      onClick={onClick}
-      className="flex aspect-[63/90] flex-col overflow-hidden rounded-2xl border-2 border-black/10 bg-cream text-left shadow-[0_6px_16px_-6px_rgba(0,0,0,0.3)] dark:border-white/10 dark:bg-neutral-900"
-    >
-      <div className="flex justify-end px-2.5 pt-2.5 pb-2" style={{ backgroundColor: category.hex }}>
-        <Icon size={14} className="text-black/70" />
-      </div>
-      <div className="flex flex-1 flex-col justify-between px-2.5 py-2">
-        <p className="font-display line-clamp-3 text-[12px] leading-tight text-black dark:text-cream">
-          {challenge.title}
-        </p>
-        <span
-          className="self-end rounded-full px-2 py-0.5 text-[10px] font-bold text-black"
-          style={{ backgroundColor: category.hex }}
-        >
-          +{challenge.points}
-        </span>
-      </div>
-    </motion.button>
-  )
-}
-
 export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, onPick }: Props) {
   const [filter, setFilter] = useState<CategoryId | 'all'>(lockedCategoryId ?? 'all')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const pool = useMemo(() => {
     const all = availableChallenges(validatedChallengeIds)
@@ -53,12 +23,17 @@ export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, onPic
     return filter === 'all' ? all : all.filter((c) => c.categoryId === filter)
   }, [validatedChallengeIds, lockedCategoryId, filter])
 
+  const selected = pool.find((c) => c.id === selectedId) ?? null
+
   return (
     <div>
       {!lockedCategoryId && (
         <div className="mb-4 flex flex-wrap justify-center gap-2">
           <button
-            onClick={() => setFilter('all')}
+            onClick={() => {
+              setFilter('all')
+              setSelectedId(null)
+            }}
             className={`font-rounded rounded-full border px-3 py-1 text-xs font-semibold transition ${
               filter === 'all'
                 ? 'border-black bg-black text-cream'
@@ -70,7 +45,10 @@ export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, onPic
           {categories.map((c) => (
             <button
               key={c.id}
-              onClick={() => setFilter(c.id)}
+              onClick={() => {
+                setFilter(c.id)
+                setSelectedId(null)
+              }}
               className={`font-rounded rounded-full border px-3 py-1 text-xs font-semibold transition ${
                 filter === c.id
                   ? 'text-black'
@@ -89,16 +67,58 @@ export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, onPic
           Plus aucun défi disponible ici. 🎉
         </p>
       ) : (
-        <div className="grid grid-cols-3 gap-2.5">
-          {pool.map((challenge, i) => (
-            <MiniCard
-              key={challenge.id}
-              challenge={challenge}
-              delay={i * 0.02}
-              onClick={() => onPick(challenge.id)}
-            />
-          ))}
+        <div className="flex flex-col items-center gap-4 pb-4">
+          {pool.map((challenge) => {
+            const isSelected = challenge.id === selectedId
+            return (
+              <motion.button
+                key={challenge.id}
+                layout
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setSelectedId(isSelected ? null : challenge.id)}
+                className="relative"
+              >
+                <div
+                  className={`rounded-[1.75rem] transition ${
+                    isSelected ? 'ring-4 ring-black ring-offset-2 ring-offset-cream dark:ring-cream dark:ring-offset-neutral-950' : ''
+                  }`}
+                >
+                  <ChallengeCard challenge={challenge} />
+                </div>
+                {isSelected && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -right-2 -top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black text-cream shadow-lg dark:bg-cream dark:text-black"
+                  >
+                    <Check size={18} />
+                  </motion.div>
+                )}
+              </motion.button>
+            )
+          })}
         </div>
+      )}
+
+      {selected && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="sticky bottom-4 z-20 mx-auto flex w-full max-w-xs items-center gap-2 rounded-full border border-black/10 bg-cream p-1.5 shadow-xl dark:border-white/10 dark:bg-neutral-900"
+        >
+          <button
+            onClick={() => setSelectedId(null)}
+            className="font-rounded flex-shrink-0 px-3 py-2 text-xs font-semibold text-black/50 hover:text-black dark:text-cream/50 dark:hover:text-cream"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={() => onPick(selected.id)}
+            className="font-rounded flex-1 rounded-full bg-black py-2.5 text-sm font-semibold text-cream transition hover:bg-black/80"
+          >
+            Confirmer « {selected.title} »
+          </button>
+        </motion.div>
       )}
     </div>
   )
