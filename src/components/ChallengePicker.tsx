@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { categories } from '../data/categories'
-import { availableChallenges } from '../state/useGameState'
+import { challenges, challengesByCategory } from '../data/challenges'
 import { SwipeDeck } from './SwipeDeck'
 import type { CategoryId } from '../types'
 
@@ -18,14 +17,14 @@ export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, onPic
   const [index, setIndex] = useState(0)
 
   const pool = useMemo(() => {
-    const all = availableChallenges(validatedChallengeIds)
-    if (lockedCategoryId) return all.filter((c) => c.categoryId === lockedCategoryId)
-    return filter === 'all' ? all : all.filter((c) => c.categoryId === filter)
-  }, [validatedChallengeIds, lockedCategoryId, filter])
+    if (lockedCategoryId) return challengesByCategory(lockedCategoryId)
+    return filter === 'all' ? challenges : challengesByCategory(filter)
+  }, [lockedCategoryId, filter])
 
   useEffect(() => setIndex(0), [pool])
 
   const current = pool[index]
+  const currentIsValidated = current ? validatedChallengeIds.includes(current.id) : false
 
   return (
     <div>
@@ -60,11 +59,17 @@ export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, onPic
 
       {pool.length === 0 ? (
         <p className="font-rounded py-8 text-center text-sm text-black/50 dark:text-cream/50">
-          Plus aucun défi disponible ici. 🎉
+          Aucun défi ici.
         </p>
       ) : (
         <>
-          <SwipeDeck pool={pool} index={index} onIndexChange={setIndex} />
+          <SwipeDeck
+            pool={pool}
+            validatedChallengeIds={validatedChallengeIds}
+            index={index}
+            onIndexChange={setIndex}
+            onPick={onPick}
+          />
 
           <div className="mt-4 flex items-center justify-center gap-4">
             <button
@@ -88,17 +93,9 @@ export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, onPic
             </button>
           </div>
 
-          {current && (
-            <motion.button
-              key={current.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              onClick={() => onPick(current.id)}
-              className="font-rounded sticky bottom-4 z-20 mx-auto mt-5 block w-full max-w-xs rounded-full bg-black py-3 text-sm font-semibold text-cream shadow-xl transition hover:bg-black/80"
-            >
-              Choisir « {current.title} » · +{current.points}
-            </motion.button>
-          )}
+          <p className="font-rounded mt-3 text-center text-xs text-black/40 dark:text-cream/40">
+            {currentIsValidated ? 'Déjà validé — glisse pour voir la suite' : 'Tape la carte pour la choisir'}
+          </p>
         </>
       )}
     </div>
