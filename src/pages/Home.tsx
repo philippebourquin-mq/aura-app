@@ -20,7 +20,7 @@ export function Home() {
 
   return (
     <div>
-      <RoleSwitcher role={state.role} onChange={game.setRole} />
+      <RoleSwitcher role={state.role} onChange={game.setRole} showProfileLink />
 
       <div className="mx-auto max-w-4xl px-5 pt-4">
         <header className="mb-6 text-center">

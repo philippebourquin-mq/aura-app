@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { categories } from '../data/categories'
 import { categoryIcons } from '../lib/categoryIcons'
 import { availableChallenges } from '../state/useGameState'
-import type { CategoryId } from '../types'
+import type { CategoryId, Challenge } from '../types'
 
 interface Props {
   validatedChallengeIds: string[]
@@ -12,17 +12,45 @@ interface Props {
   onPick: (challengeId: string) => void
 }
 
+function MiniCard({ challenge, delay, onClick }: { challenge: Challenge; delay: number; onClick: () => void }) {
+  const category = categories.find((c) => c.id === challenge.categoryId)!
+  const Icon = categoryIcons[challenge.categoryId]
+
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      whileHover={{ y: -4 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={onClick}
+      className="flex aspect-[63/90] flex-col overflow-hidden rounded-2xl border-2 border-black/10 bg-cream text-left shadow-[0_6px_16px_-6px_rgba(0,0,0,0.3)] dark:border-white/10 dark:bg-neutral-900"
+    >
+      <div className="flex justify-end px-2.5 pt-2.5 pb-2" style={{ backgroundColor: category.hex }}>
+        <Icon size={14} className="text-black/70" />
+      </div>
+      <div className="flex flex-1 flex-col justify-between px-2.5 py-2">
+        <p className="font-display line-clamp-3 text-[12px] leading-tight text-black dark:text-cream">
+          {challenge.title}
+        </p>
+        <span
+          className="self-end rounded-full px-2 py-0.5 text-[10px] font-bold text-black"
+          style={{ backgroundColor: category.hex }}
+        >
+          +{challenge.points}
+        </span>
+      </div>
+    </motion.button>
+  )
+}
+
 export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, onPick }: Props) {
   const [filter, setFilter] = useState<CategoryId | 'all'>(lockedCategoryId ?? 'all')
 
   const pool = useMemo(() => {
     const all = availableChallenges(validatedChallengeIds)
-    const byCategory = lockedCategoryId
-      ? all.filter((c) => c.categoryId === lockedCategoryId)
-      : filter === 'all'
-        ? all
-        : all.filter((c) => c.categoryId === filter)
-    return byCategory
+    if (lockedCategoryId) return all.filter((c) => c.categoryId === lockedCategoryId)
+    return filter === 'all' ? all : all.filter((c) => c.categoryId === filter)
   }, [validatedChallengeIds, lockedCategoryId, filter])
 
   return (
@@ -61,43 +89,15 @@ export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, onPic
           Plus aucun défi disponible ici. 🎉
         </p>
       ) : (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {pool.map((challenge, i) => {
-            const category = categories.find((c) => c.id === challenge.categoryId)!
-            const Icon = categoryIcons[challenge.categoryId]
-            return (
-              <motion.button
-                key={challenge.id}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.02 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => onPick(challenge.id)}
-                className="flex items-center gap-3 rounded-2xl border border-black/10 bg-white/70 p-3 text-left transition hover:-translate-y-0.5 hover:shadow-md dark:border-white/10 dark:bg-white/5"
-              >
-                <div
-                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full"
-                  style={{ backgroundColor: category.hex }}
-                >
-                  <Icon size={16} className="text-black/70" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-rounded truncate text-sm font-semibold text-black dark:text-cream">
-                    {challenge.title}
-                  </p>
-                  <p className="font-rounded truncate text-xs text-black/40 dark:text-cream/40">
-                    {category.name}
-                  </p>
-                </div>
-                <span
-                  className="flex-shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold text-black"
-                  style={{ backgroundColor: category.hex }}
-                >
-                  +{challenge.points}
-                </span>
-              </motion.button>
-            )
-          })}
+        <div className="grid grid-cols-3 gap-2.5">
+          {pool.map((challenge, i) => (
+            <MiniCard
+              key={challenge.id}
+              challenge={challenge}
+              delay={i * 0.02}
+              onClick={() => onPick(challenge.id)}
+            />
+          ))}
         </div>
       )}
     </div>

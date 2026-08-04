@@ -149,20 +149,10 @@ export function useGameState() {
     })
   }, [])
 
-  /** Lucas marks the active challenge done — awaiting team validation. */
-  const lucasSubmit = useCallback(() => {
-    setState((s) => {
-      if (!s.currentRun || s.currentRun.status !== 'in-progress') return s
-      return {
-        ...s,
-        currentRun: { ...s.currentRun, status: 'submitted', submittedAt: new Date().toISOString() },
-      }
-    })
-  }, [])
-
+  /** Team validates the in-progress challenge directly — Lucas never has to declare he's done. */
   const teamValidate = useCallback(() => {
     setState((s) => {
-      if (!s.currentRun || s.currentRun.status !== 'submitted' || !s.currentRun.challengeId) return s
+      if (!s.currentRun || s.currentRun.status !== 'in-progress' || !s.currentRun.challengeId) return s
       const challenge = challenges.find((c) => c.id === s.currentRun?.challengeId)
       const entry: HistoryEntry = {
         id: uid(),
@@ -184,7 +174,7 @@ export function useGameState() {
 
   const teamReject = useCallback(() => {
     setState((s) => {
-      if (!s.currentRun || s.currentRun.status !== 'submitted') return s
+      if (!s.currentRun || s.currentRun.status !== 'in-progress') return s
       const entry: HistoryEntry = {
         id: uid(),
         origin: s.currentRun.origin,
@@ -210,7 +200,6 @@ export function useGameState() {
     lucasPickChallenge,
     switchCard,
     closeWithJoker,
-    lucasSubmit,
     teamValidate,
     teamReject,
     reset,

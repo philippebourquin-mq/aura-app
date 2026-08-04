@@ -3,7 +3,6 @@ import { HashRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { Home } from './pages/Home'
 import { CategoryDraw } from './pages/CategoryDraw'
 import { Progress } from './pages/Progress'
-import { BottomNav } from './components/BottomNav'
 
 function AnimatedRoutes() {
   const location = useLocation()
@@ -30,9 +29,8 @@ function AnimatedRoutes() {
 function App() {
   return (
     <HashRouter>
-      <div className="min-h-screen bg-cream pb-20 dark:bg-neutral-950">
+      <div className="min-h-screen bg-cream pb-8 dark:bg-neutral-950">
         <AnimatedRoutes />
-        <BottomNav />
       </div>
     </HashRouter>
   )

@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion'
 import confetti from 'canvas-confetti'
-import { Hourglass, Repeat, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { Hourglass, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { categories, categoryById, jokers } from '../data/categories'
 import { challenges } from '../data/challenges'
 import { ChallengeCard } from './ChallengeCard'
 import { ChallengePicker } from './ChallengePicker'
+import { JokerCard } from './JokerCard'
 import type { useGameState } from '../state/useGameState'
 import type { JokerId } from '../types'
 
@@ -18,19 +19,13 @@ export function CurrentRun({ game }: { game: Game }) {
   const challenge = run?.challengeId ? challenges.find((c) => c.id === run.challengeId) : undefined
   const category = run?.categoryId ? categoryById(run.categoryId) : undefined
 
-  const handleSubmit = () => {
-    if (!challenge) return
+  const handleValidate = () => {
     confetti({
-      particleCount: 90,
-      spread: 70,
+      particleCount: 140,
+      spread: 100,
       origin: { y: 0.6 },
       colors: [category?.hex ?? '#F0501E', '#111111', '#F5EFDE'],
     })
-    game.lucasSubmit()
-  }
-
-  const handleValidate = () => {
-    confetti({ particleCount: 140, spread: 100, origin: { y: 0.6 } })
     game.teamValidate()
   }
 
@@ -116,70 +111,43 @@ export function CurrentRun({ game }: { game: Game }) {
 
   if (!challenge) return null
 
-  // --- in progress: card is locked in, Lucas can act on it ---
-  if (run.status === 'in-progress') {
-    return (
-      <div className="flex flex-col items-center gap-5">
-        <motion.div
-          key={challenge.id}
-          initial={{ rotateY: -110, opacity: 0, scale: 0.9 }}
-          animate={{ rotateY: 0, opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          style={{ perspective: 1200, transformStyle: 'preserve-3d' }}
-        >
-          <ChallengeCard
-            challenge={challenge}
-            actionLabel={state.role === 'lucas' ? "Je l'ai fait" : undefined}
-            onAction={state.role === 'lucas' ? handleSubmit : undefined}
-          />
-        </motion.div>
-
-        {state.role === 'team' && (
-          <p className="font-rounded text-center text-sm text-black/60 dark:text-cream/60">
-            Lucas planche sur ce défi.
-          </p>
-        )}
-
-        {state.role === 'lucas' && availableJokers.length > 0 && (
-          <div className="w-full max-w-xs">
-            <p className="font-rounded mb-2 text-center text-xs font-semibold uppercase tracking-wide text-black/50 dark:text-cream/50">
-              Jokers disponibles
-            </p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {availableJokers.map((j) => (
-                <button
-                  key={j.id}
-                  onClick={() => {
-                    if (j.id === 'switch') game.switchCard()
-                    else game.closeWithJoker(j.id as 'boomerang' | 'flemme')
-                  }}
-                  title={j.effect}
-                  className="inline-flex items-center gap-1 rounded-full border border-black/20 bg-white px-3 py-1 text-xs font-semibold text-black/70 hover:bg-black/5 dark:border-white/20 dark:bg-white/5 dark:text-cream/70 dark:hover:bg-white/10"
-                >
-                  {j.id === 'switch' && <Repeat size={12} />}
-                  {j.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  // --- submitted: awaiting team validation ---
+  // --- in progress: card is locked in. Team can validate/reject any time; Lucas can joker out. ---
   return (
     <div className="flex flex-col items-center gap-5">
-      <ChallengeCard challenge={challenge} badge="submitted" />
+      <motion.div
+        key={challenge.id}
+        initial={{ rotateY: -110, opacity: 0, scale: 0.9 }}
+        animate={{ rotateY: 0, opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        style={{ perspective: 1200, transformStyle: 'preserve-3d' }}
+      >
+        <ChallengeCard challenge={challenge} />
+      </motion.div>
 
       {state.role === 'lucas' && (
-        <motion.p
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="font-rounded text-center text-sm font-semibold text-black/70 dark:text-cream/70"
-        >
-          Bien joué ! En attente de validation par ta team. 🎉
-        </motion.p>
+        <p className="font-rounded text-center text-sm text-black/60 dark:text-cream/60">
+          Termine ton défi — ta team le validera. 💪
+        </p>
+      )}
+
+      {state.role === 'lucas' && availableJokers.length > 0 && (
+        <div>
+          <p className="font-rounded mb-2 text-center text-xs font-semibold uppercase tracking-wide text-black/50 dark:text-cream/50">
+            Jokers disponibles
+          </p>
+          <div className="flex justify-center gap-2">
+            {availableJokers.map((j) => (
+              <JokerCard
+                key={j.id}
+                joker={j}
+                onClick={() => {
+                  if (j.id === 'switch') game.switchCard()
+                  else game.closeWithJoker(j.id as 'boomerang' | 'flemme')
+                }}
+              />
+            ))}
+          </div>
+        </div>
       )}
 
       {state.role === 'team' && (

@@ -37,12 +37,13 @@ export type Role = 'lucas' | 'team'
 export type RunOrigin = 'lucas' | 'team'
 
 /**
- * Lifecycle of the single active challenge slot.
+ * Lifecycle of the single active challenge slot. Lucas never has to declare
+ * he's done — the team validates directly against the in-progress card.
  *
- * lucas flow:  (none) -> in-progress -> submitted -> (cleared, validated/rejected)
- * team flow:   (none) -> awaiting-category -> awaiting-card -> in-progress -> submitted -> (cleared)
+ * lucas flow:  (none) -> in-progress -> (cleared, validated/rejected)
+ * team flow:   (none) -> awaiting-category -> awaiting-card -> in-progress -> (cleared)
  */
-export type RunStatus = 'awaiting-category' | 'awaiting-card' | 'in-progress' | 'submitted'
+export type RunStatus = 'awaiting-category' | 'awaiting-card' | 'in-progress'
 
 export interface ChallengeRun {
   id: string
@@ -51,7 +52,6 @@ export interface ChallengeRun {
   categoryId?: CategoryId
   challengeId?: string
   createdAt: string
-  submittedAt?: string
 }
 
 export type HistoryOutcome = 'validated' | 'rejected' | 'skipped'
