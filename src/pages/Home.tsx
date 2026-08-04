@@ -1,20 +1,44 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ChevronUp } from 'lucide-react'
 import { categories, categoryById } from '../data/categories'
 import { challenges, challengesByCategory } from '../data/challenges'
 import { useGameState } from '../state/useGameState'
 import { AuraGauge } from '../components/AuraGauge'
+import { CelebrationOverlay } from '../components/CelebrationOverlay'
+import { ChallengeTakeover } from '../components/ChallengeTakeover'
 import { CurrentRun } from '../components/CurrentRun'
 import { RoleSwitcher } from '../components/RoleSwitcher'
 import { ChallengePicker } from '../components/ChallengePicker'
 import { categoryIcons } from '../lib/categoryIcons'
-import type { CategoryId } from '../types'
+import type { CategoryId, Category, Challenge } from '../types'
 
 export function Home() {
   const game = useGameState()
   const { state } = game
   const [browsing, setBrowsing] = useState<CategoryId | null>(null)
+  const [takeoverOpen, setTakeoverOpen] = useState(true)
+  const [celebration, setCelebration] = useState<{ challenge: Challenge; category: Category } | null>(null)
+
+  const run = state.currentRun
+  const activeChallenge = run?.challengeId ? challenges.find((c) => c.id === run.challengeId) : undefined
+  const activeCategory = run?.categoryId ? categoryById(run.categoryId) : undefined
+
+  // Re-open the takeover whenever a fresh run gets accepted, even if a previous one was minimized.
+  const prevStatusRef = useRef(run?.status)
+  useEffect(() => {
+    const prevStatus = prevStatusRef.current
+    prevStatusRef.current = run?.status
+    if (run?.status === 'in-progress' && prevStatus !== 'in-progress') {
+      setTakeoverOpen(true)
+    }
+  }, [run?.status])
+
+  const handleValidate = () => {
+    if (!activeChallenge || !activeCategory) return
+    setCelebration({ challenge: activeChallenge, category: activeCategory })
+    game.teamValidate()
+  }
 
   const totalPoints = challenges
     .filter((c) => state.validatedChallengeIds.includes(c.id))
@@ -23,77 +47,124 @@ export function Home() {
   const canPickFreely = state.role === 'lucas' && !state.currentRun
   const browsingCategory = browsing ? categoryById(browsing) : null
 
+  const overlays = (
+    <>
+      <AnimatePresence>
+        {run?.status === 'in-progress' && activeChallenge && takeoverOpen && (
+          <ChallengeTakeover
+            challenge={activeChallenge}
+            role={state.role}
+            onValidate={handleValidate}
+            onReject={() => game.teamReject()}
+            onMinimize={() => setTakeoverOpen(false)}
+            onSwitchRole={game.setRole}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {celebration && (
+          <CelebrationOverlay
+            challenge={celebration.challenge}
+            category={celebration.category}
+            onContinue={() => setCelebration(null)}
+          />
+        )}
+      </AnimatePresence>
+    </>
+  )
+
   // Free-choice browsing happens inline, right here on the home screen — no page navigation.
   if (canPickFreely && browsingCategory) {
     const Icon = categoryIcons[browsingCategory.id]
     return (
-      <div>
-        <RoleSwitcher role={state.role} onChange={game.setRole} showProfileLink />
-        <div className="mx-auto max-w-lg px-6 pt-4 pb-10">
-          <button
-            onClick={() => setBrowsing(null)}
-            className="font-rounded mb-6 inline-flex items-center gap-1 text-sm text-black/60 hover:text-black dark:text-cream/60 dark:hover:text-cream"
-          >
-            <ArrowLeft size={16} /> Retour aux thèmes
-          </button>
-
-          <div className="mb-8 flex items-center justify-center gap-3 text-center">
-            <div
-              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full"
-              style={{ backgroundColor: browsingCategory.hex }}
+      <>
+        <div>
+          <RoleSwitcher role={state.role} onChange={game.setRole} showProfileLink />
+          <div className="mx-auto max-w-lg px-6 pt-4 pb-10">
+            <button
+              onClick={() => setBrowsing(null)}
+              className="font-rounded mb-6 inline-flex items-center gap-1 text-sm text-black/60 hover:text-black dark:text-cream/60 dark:hover:text-cream"
             >
-              <Icon size={20} className="text-black/70" />
-            </div>
-            <div className="text-left">
-              <h1 className="font-display text-2xl text-black dark:text-cream">{browsingCategory.name}</h1>
-              <p className="font-rounded text-sm text-black/60 dark:text-cream/60">{browsingCategory.tagline}</p>
-            </div>
-          </div>
+              <ArrowLeft size={16} /> Retour aux thèmes
+            </button>
 
-          <ChallengePicker
-            validatedChallengeIds={state.validatedChallengeIds}
-            lockedCategoryId={browsingCategory.id}
-            onPick={(id) => {
-              game.lucasPickChallenge(id)
-              setBrowsing(null)
-            }}
-          />
+            <div className="mb-8 flex items-center justify-center gap-3 text-center">
+              <div
+                className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full"
+                style={{ backgroundColor: browsingCategory.hex }}
+              >
+                <Icon size={20} className="text-black/70" />
+              </div>
+              <div className="text-left">
+                <h1 className="font-display text-2xl text-black dark:text-cream">{browsingCategory.name}</h1>
+                <p className="font-rounded text-sm text-black/60 dark:text-cream/60">{browsingCategory.tagline}</p>
+              </div>
+            </div>
+
+            <ChallengePicker
+              validatedChallengeIds={state.validatedChallengeIds}
+              lockedCategoryId={browsingCategory.id}
+              onPick={(id) => {
+                game.lucasPickChallenge(id)
+                setBrowsing(null)
+              }}
+            />
+          </div>
         </div>
-      </div>
+        {overlays}
+      </>
     )
   }
 
   return (
-    <div>
-      <RoleSwitcher role={state.role} onChange={game.setRole} showProfileLink />
+    <>
+      <div>
+        <RoleSwitcher role={state.role} onChange={game.setRole} showProfileLink />
 
-      <div className="mx-auto max-w-4xl px-5 pt-4">
-        <header className="mb-6 text-center">
-          <h1 className="font-display text-3xl tracking-[0.3em] text-black dark:text-cream">
-            A U R A
-          </h1>
-          <p className="font-rounded mx-auto mt-2 max-w-sm text-sm text-black/60 dark:text-cream/60">
-            {state.role === 'lucas'
-              ? "Choisis un défi, ou attends que ta team t'en lance un."
-              : "Suis la progression de Lucas, lance-lui un défi ou valide ce qu'il a fait."}
-          </p>
-        </header>
+        <div className="mx-auto max-w-4xl px-5 pt-4">
+          <header className="mb-6 text-center">
+            <h1 className="font-display text-3xl tracking-[0.3em] text-black dark:text-cream">
+              A U R A
+            </h1>
+            <p className="font-rounded mx-auto mt-2 max-w-sm text-sm text-black/60 dark:text-cream/60">
+              {state.role === 'lucas'
+                ? "Choisis un défi, ou attends que ta team t'en lance un."
+                : "Suis la progression de Lucas, lance-lui un défi ou valide ce qu'il a fait."}
+            </p>
+          </header>
 
-        <AuraGauge points={totalPoints} />
+          <AuraGauge points={totalPoints} />
 
-        <div className="mt-6">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={state.currentRun?.id ?? 'idle'}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-            >
-              <CurrentRun game={game} />
-            </motion.div>
-          </AnimatePresence>
-        </div>
+          <div className="mt-6">
+            {run?.status === 'in-progress' && activeChallenge ? (
+              !takeoverOpen && (
+                <motion.button
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setTakeoverOpen(true)}
+                  className="font-rounded flex w-full items-center justify-between rounded-card border border-black/10 bg-white/70 px-4 py-3 text-left text-sm dark:border-white/10 dark:bg-white/5"
+                >
+                  <span className="font-semibold text-black dark:text-cream">
+                    Reprendre le défi en cours
+                  </span>
+                  <ChevronUp size={16} className="text-black/40 dark:text-cream/40" />
+                </motion.button>
+              )
+            ) : (
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={run?.id ?? 'idle'}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <CurrentRun game={game} />
+                </motion.div>
+              </AnimatePresence>
+            )}
+          </div>
 
         <div className="mt-8">
           {canPickFreely && (
@@ -165,7 +236,9 @@ export function Home() {
             })}
           </div>
         </div>
+        </div>
       </div>
-    </div>
+      {overlays}
+    </>
   )
 }

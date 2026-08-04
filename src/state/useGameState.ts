@@ -77,7 +77,7 @@ export function useGameState() {
     })
   }, [])
 
-  /** Team picks the specific card within the chosen theme — Flow B, step 3. */
+  /** Team picks the specific card within the chosen theme — Flow B, step 3. Lands on the reveal beat. */
   const teamAssignCard = useCallback((challengeId: string) => {
     setState((s) => {
       if (!s.currentRun || s.currentRun.origin !== 'team' || s.currentRun.status !== 'awaiting-card') {
@@ -85,7 +85,7 @@ export function useGameState() {
       }
       return {
         ...s,
-        currentRun: { ...s.currentRun, challengeId, status: 'in-progress' },
+        currentRun: { ...s.currentRun, challengeId, status: 'revealed' },
       }
     })
   }, [])
@@ -99,7 +99,7 @@ export function useGameState() {
       const run: ChallengeRun = {
         id: uid(),
         origin: 'lucas',
-        status: 'in-progress',
+        status: 'revealed',
         categoryId: challenge.categoryId,
         challengeId: challenge.id,
         createdAt: new Date().toISOString(),
@@ -108,10 +108,18 @@ export function useGameState() {
     })
   }, [])
 
-  /** Switch joker: swap for another available card in the same category, self-service. */
+  /** Lucas accepts the revealed card — commits to it, no more jokers past this point. */
+  const lucasAcceptChallenge = useCallback(() => {
+    setState((s) => {
+      if (!s.currentRun || s.currentRun.status !== 'revealed') return s
+      return { ...s, currentRun: { ...s.currentRun, status: 'in-progress' } }
+    })
+  }, [])
+
+  /** Switch joker: swap for another card in the same category — always available at reveal. */
   const switchCard = useCallback(() => {
     setState((s) => {
-      if (!s.currentRun || s.currentRun.status !== 'in-progress' || !s.currentRun.categoryId) return s
+      if (!s.currentRun || s.currentRun.status !== 'revealed' || !s.currentRun.categoryId) return s
       if (s.jokersUsed.includes('switch')) return s
       const pool = challengesByCategory(s.currentRun.categoryId).filter(
         (c) => !s.validatedChallengeIds.includes(c.id) && c.id !== s.currentRun?.challengeId,
@@ -126,10 +134,14 @@ export function useGameState() {
     })
   }, [])
 
-  /** Boomerang / Flemme: close the current run without penalty, challenge stays available. */
+  /**
+   * Boomerang / Flemme: close the run without penalty, challenge stays available.
+   * Only valid on a team-thrown run — "refile-le à ta team" / "attendra demain" only
+   * make sense as a reaction to a challenge Lucas received, not one he picked himself.
+   */
   const closeWithJoker = useCallback((jokerId: 'boomerang' | 'flemme') => {
     setState((s) => {
-      if (!s.currentRun || s.currentRun.status !== 'in-progress') return s
+      if (!s.currentRun || s.currentRun.status !== 'revealed' || s.currentRun.origin !== 'team') return s
       if (s.jokersUsed.includes(jokerId)) return s
       const entry: HistoryEntry = {
         id: uid(),
@@ -198,6 +210,7 @@ export function useGameState() {
     lucasPickTheme,
     teamAssignCard,
     lucasPickChallenge,
+    lucasAcceptChallenge,
     switchCard,
     closeWithJoker,
     teamValidate,

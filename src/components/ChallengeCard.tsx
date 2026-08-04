@@ -7,10 +7,11 @@ interface Props {
   challenge: Challenge
   validated?: boolean
   className?: string
+  size?: 'md' | 'lg'
 }
 
 /** Full-size card, proportioned like the physical poker-format cards (63x90mm). */
-export function ChallengeCard({ challenge, validated = false, className = '' }: Props) {
+export function ChallengeCard({ challenge, validated = false, className = '', size = 'md' }: Props) {
   const category = categoryById(challenge.categoryId)
   if (!category) return null
 
@@ -18,7 +19,7 @@ export function ChallengeCard({ challenge, validated = false, className = '' }: 
 
   return (
     <div
-      className={`relative flex aspect-[63/90] w-64 flex-col overflow-hidden rounded-[1.75rem] border-2 border-black/10 bg-cream shadow-[0_14px_34px_-10px_rgba(0,0,0,0.35)] dark:border-white/10 dark:bg-neutral-900 ${
+      className={`relative flex aspect-[63/90] ${size === 'lg' ? 'w-80' : 'w-64'} flex-col overflow-hidden rounded-[1.75rem] border-2 border-black/10 bg-cream shadow-[0_14px_34px_-10px_rgba(0,0,0,0.35)] dark:border-white/10 dark:bg-neutral-900 ${
         validated ? 'grayscale' : ''
       } ${className}`}
     >
