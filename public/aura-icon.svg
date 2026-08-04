@@ -1,5 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <rect width="64" height="64" rx="12" fill="#F5EFDE"/>
-  <rect y="40" width="64" height="24" rx="0" fill="#F0501E"/>
-  <text x="32" y="26" font-family="Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="2" text-anchor="middle" fill="#111111">AURA</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#F5EFDE" />
+  <text
+    x="32"
+    y="38"
+    font-family="Arial, Helvetica, sans-serif"
+    font-weight="800"
+    font-size="13"
+    letter-spacing="6"
+    text-anchor="middle"
+    fill="#E3D6AC"
+  >AURA</text>
 </svg>
