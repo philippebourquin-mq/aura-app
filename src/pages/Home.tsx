@@ -192,14 +192,12 @@ export function Home() {
             )}
           </div>
 
-          <div className="mt-5 grid grid-cols-3 gap-3">
+          <div className="mt-6 space-y-5">
             {categories.map((category, i) => {
               const list = [
                 ...challengesByCategory(category.id),
                 ...state.customChallenges.filter((c) => c.categoryId === category.id),
               ]
-              const done = list.filter((c) => state.validatedChallengeIds.includes(c.id)).length
-              const complete = list.length > 0 && done === list.length
               const Icon = categoryIcons[category.id]
               const locked = !canPickFreely
 
@@ -207,25 +205,40 @@ export function Home() {
                 <motion.div
                   key={category.id}
                   initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0, filter: locked ? 'grayscale(60%)' : 'grayscale(0%)' }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03, duration: 0.25 }}
                 >
-                  <button
-                    onClick={() => !locked && setBrowsing(category.id)}
-                    disabled={locked}
-                    aria-label={category.name}
-                    className={`relative flex aspect-square w-full items-center justify-center rounded-2xl border border-black/10 dark:border-white/10 ${
-                      locked ? 'opacity-50' : 'transition hover:-translate-y-0.5'
-                    }`}
-                    style={{ backgroundColor: `${category.hex}2E` }}
-                  >
-                    <Icon size={22} style={{ color: category.hex }} />
-                    {complete && (
-                      <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-black text-cream">
-                        <Check size={10} />
-                      </span>
-                    )}
-                  </button>
+                  <div className="mb-2 flex items-center gap-1.5 px-0.5">
+                    <Icon size={13} style={{ color: category.hex }} />
+                    <span className="font-rounded text-xs font-semibold text-black/70 dark:text-cream/70">
+                      {category.name}
+                    </span>
+                  </div>
+                  <div className="-mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1">
+                    {list.map((challenge) => {
+                      const done = state.validatedChallengeIds.includes(challenge.id)
+                      const disabled = locked || done
+                      return (
+                        <button
+                          key={challenge.id}
+                          onClick={() => !disabled && handlePick(challenge.id)}
+                          disabled={disabled}
+                          aria-label={challenge.title}
+                          title={challenge.title}
+                          className={`relative flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border border-black/10 dark:border-white/10 ${
+                            locked && !done ? 'opacity-40' : ''
+                          } ${done ? 'grayscale' : 'transition hover:-translate-y-0.5'}`}
+                          style={{ backgroundColor: `${category.hex}2E` }}
+                        >
+                          {done && (
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black text-cream">
+                              <Check size={11} />
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </motion.div>
               )
             })}

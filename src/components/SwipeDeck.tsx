@@ -17,11 +17,12 @@ function DraggableCard({ challenge, validated, exitX, onSwipe, onChoose }: Dragg
 
   return (
     <motion.div
-      className="absolute inset-0"
-      style={{ x, rotate }}
+      className="absolute inset-0 touch-pan-y select-none"
+      style={{ x, rotate, touchAction: 'pan-y' }}
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={1}
+      dragMomentum={false}
       onDragEnd={(_, info) => {
         if (info.offset.x > 100 || info.velocity.x > 400) onSwipe(1)
         else if (info.offset.x < -100 || info.velocity.x < -400) onSwipe(-1)

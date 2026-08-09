@@ -48,7 +48,7 @@ flowchart TD
 
 | Page | Rôle | Contenu du wireframe |
 |---|---|---|
-| **home** | Accueil | Header trophée + points, avatar. Bouton "Lance-toi un défi →". Sous le bouton : une grille de cases (défis/progression), certaines cochées. Si un défi est actif, l'écran **challenge** (ci-dessous) prend sa place. |
+| **home** | Accueil | Header trophée + points, avatar. Bouton "Lance-toi un défi →". Sous le bouton : **tous les défis** (faits ou à faire), organisés en une ligne scrollable horizontalement par catégorie, coche visible sur les défis déjà validés. Tap direct sur une carte disponible = la choisir. Si un défi est actif, l'écran **challenge** (ci-dessous) prend sa place. |
 | **pick** | Choix libre | "Choisis un défi à réaliser." Pile de cartes (deck), chips de couleur des catégories en dessous pour filtrer. |
 | **challenge** | Défi actif | "Tu as un défi en cours." Carte + **compte à rebours** ("Expire dans 12:18"). Écran atteint aussi bien après un choix libre (pick) qu'après acceptation d'un défi reçu. |
 | **receive** | Défi reçu | "On t'a lancé un défi." Carte + 3 actions en bas : accepter / joker (changer) / refuser. |
@@ -96,11 +96,11 @@ flowchart TD
 
 | Page | Rôle | Contenu du wireframe |
 |---|---|---|
-| **home** | Accueil | Header trophée + points de Lucas, avatar. Bouton "Lance un défi à Lucas →". Même grille de progression qu'côté Player. |
+| **home** | Accueil | Header trophée + points de Lucas, avatar (icône équipe). Bouton "Lance un défi à Lucas →". Même grille (lignes par catégorie) qu'côté Player. |
 | **pick** | Choix pour Lucas | Même écran "Choisis un défi à réaliser" que côté Player (pile de cartes + chips couleur), mais ici la team choisit **pour** Lucas puis **envoie**. |
 | **follow** | Suivi | "Lucas a un défi en cours." Carte + décompte — miroir en lecture seule de l'écran **challenge** du Player. |
-| **status** | Profil de Lucas | Trophée + points + piste de progression, plus la liste des défis (cartes, avec un bouton **+**). |
-| **new** | Création | Formulaire ("fill up form") : champs de texte (titre / description) + sélecteur (catégorie ou points) — **la team peut créer ses propres cartes défi**, en plus du catalogue fixe du jeu physique. |
+| **status** | Profil de Lucas | Trophée + points + piste de progression, badges, puis les mêmes lignes de défis par catégorie qu'à l'accueil — avec, pour la team, une tuile **+** en bout de chaque ligne pour créer un défi dans cette catégorie précise (pas de sélecteur de catégorie séparé : le "+" porte déjà l'info). |
+| **new** | Création | Formulaire ("fill up form") : titre, description, catégorie (pré-remplie, en lecture seule), points (rangée de valeurs prédéfinies) — **la team peut créer ses propres cartes défi**, en plus du catalogue fixe du jeu physique. |
 
 ### Règles du flux (Team)
 

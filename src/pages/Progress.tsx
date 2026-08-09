@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Clock, Flag, Lock, Plus, Shuffle, X, XCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Clock, Flag, Lock, Plus, Shuffle, XCircle } from 'lucide-react'
 import { categories, categoryById } from '../data/categories'
 import { challenges, challengesByCategory } from '../data/challenges'
 import { useGameState } from '../state/useGameState'
@@ -21,14 +21,12 @@ const outcomeMeta: Record<HistoryOutcome, { label: string; icon: typeof CheckCir
   'not-validated': { label: 'Non validé', icon: XCircle, className: 'text-rose-500/80 dark:text-rose-400/80' },
 }
 
-type Creating = 'closed' | 'choose' | CategoryId
-
 export function Progress() {
   const game = useGameState()
   const { state, setRole } = game
-  const [creating, setCreating] = useState<Creating>('closed')
+  const [creatingFor, setCreatingFor] = useState<CategoryId | null>(null)
   const allChallenges = [...challenges, ...state.customChallenges]
-  const creatingCategory = creating !== 'closed' && creating !== 'choose' ? categoryById(creating) : null
+  const creatingCategory = creatingFor ? categoryById(creatingFor) : null
 
   return (
     <div>
@@ -84,42 +82,55 @@ export function Progress() {
           </div>
         </div>
 
-        <div className="mt-8">
-          <h2 className="font-rounded mb-3 text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-cream/60">
+        <div className="mt-8 space-y-5">
+          <h2 className="font-rounded text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-cream/60">
             Défis
           </h2>
-          <div className="grid grid-cols-3 gap-3">
-            {categories.map((category) => {
-              const list = [
-                ...challengesByCategory(category.id),
-                ...state.customChallenges.filter((c) => c.categoryId === category.id),
-              ]
-              const done = list.filter((c) => state.validatedChallengeIds.includes(c.id)).length
-              const Icon = categoryIcons[category.id]
-              return (
-                <div
-                  key={category.id}
-                  title={category.name}
-                  className="relative flex aspect-square flex-col items-center justify-center gap-1 rounded-2xl border border-black/10 dark:border-white/10"
-                  style={{ backgroundColor: `${category.hex}2E` }}
-                >
-                  <Icon size={20} style={{ color: category.hex }} />
-                  <span className="font-rounded text-[10px] font-bold text-black/50 dark:text-cream/50">
-                    {done}/{list.length}
+          {categories.map((category) => {
+            const list = [
+              ...challengesByCategory(category.id),
+              ...state.customChallenges.filter((c) => c.categoryId === category.id),
+            ]
+            const Icon = categoryIcons[category.id]
+            return (
+              <div key={category.id}>
+                <div className="mb-2 flex items-center gap-1.5 px-0.5">
+                  <Icon size={13} style={{ color: category.hex }} />
+                  <span className="font-rounded text-xs font-semibold text-black/70 dark:text-cream/70">
+                    {category.name}
                   </span>
                 </div>
-              )
-            })}
-            {state.role === 'team' && (
-              <button
-                onClick={() => setCreating('choose')}
-                aria-label="Créer un défi"
-                className="flex aspect-square flex-col items-center justify-center rounded-2xl border-2 border-dashed border-black/20 text-black/30 transition hover:border-black/40 hover:text-black/50 dark:border-white/20 dark:text-cream/30 dark:hover:border-white/40 dark:hover:text-cream/50"
-              >
-                <Plus size={22} />
-              </button>
-            )}
-          </div>
+                <div className="-mx-6 flex gap-2.5 overflow-x-auto px-6 pb-1">
+                  {list.map((challenge) => {
+                    const done = state.validatedChallengeIds.includes(challenge.id)
+                    return (
+                      <div
+                        key={challenge.id}
+                        title={challenge.title}
+                        className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border border-black/10 dark:border-white/10 ${done ? 'grayscale' : ''}`}
+                        style={{ backgroundColor: `${category.hex}2E` }}
+                      >
+                        {done && (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black text-cream">
+                            <CheckCircle2 size={11} />
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                  {state.role === 'team' && (
+                    <button
+                      onClick={() => setCreatingFor(category.id)}
+                      aria-label={`Créer un défi dans ${category.name}`}
+                      className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border-2 border-dashed border-black/20 text-black/30 transition hover:border-black/40 hover:text-black/50 dark:border-white/20 dark:text-cream/30 dark:hover:border-white/40 dark:hover:text-cream/50"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
         </div>
 
         {state.history.length > 0 && (
@@ -168,56 +179,13 @@ export function Progress() {
         )}
       </div>
 
-      <AnimatePresence>
-        {creating === 'choose' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
-            onClick={() => setCreating('closed')}
-          >
-            <motion.div
-              initial={{ y: 30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 20, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm rounded-t-card bg-cream p-6 dark:bg-neutral-900 sm:rounded-card"
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="font-display text-lg text-black dark:text-cream">Pour quelle catégorie ?</h2>
-                <button
-                  onClick={() => setCreating('closed')}
-                  className="rounded-full p-1.5 text-black/40 hover:bg-black/5 dark:text-cream/40 dark:hover:bg-white/10"
-                  aria-label="Fermer"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="flex flex-wrap justify-center gap-3">
-                {categories.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setCreating(c.id)}
-                    aria-label={c.name}
-                    title={c.name}
-                    className="h-9 w-9 rounded-full"
-                    style={{ backgroundColor: c.hex }}
-                  />
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {creatingCategory && (
         <NewChallengeForm
           category={creatingCategory}
-          onClose={() => setCreating('closed')}
+          onClose={() => setCreatingFor(null)}
           onCreate={(input) => {
             game.createCustomChallenge({ ...input, categoryId: creatingCategory.id })
-            setCreating('closed')
+            setCreatingFor(null)
           }}
         />
       )}
