@@ -109,13 +109,20 @@ export function Home() {
     </>
   )
 
-  // Free-choice browsing happens inline, right here on the home screen — no page navigation.
-  if (isBrowsing) {
-    return (
-      <>
-        <div>
-          <AppHeader points={state.totalPoints} role={state.role} onRoleChange={game.setRole} />
-          <div className="mx-auto max-w-lg px-6 pt-3 pb-10">
+  return (
+    <>
+      <AppHeader points={state.totalPoints} role={state.role} onRoleChange={game.setRole} wordmark={!isBrowsing} />
+
+      <AnimatePresence mode="wait" initial={false}>
+        {isBrowsing ? (
+          <motion.div
+            key="browsing"
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 24 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto max-w-lg px-6 pt-3 pb-10"
+          >
             <button
               onClick={() => setBrowsing(null)}
               className="font-rounded mb-5 inline-flex items-center gap-1 text-sm text-black/60 hover:text-black dark:text-cream/60 dark:hover:text-cream"
@@ -133,19 +140,16 @@ export function Home() {
               customChallenges={state.customChallenges}
               onPick={handlePick}
             />
-          </div>
-        </div>
-        {overlays}
-      </>
-    )
-  }
-
-  return (
-    <>
-      <div>
-        <AppHeader points={state.totalPoints} role={state.role} onRoleChange={game.setRole} wordmark />
-
-        <div className="mx-auto max-w-lg px-5 pb-10">
+          </motion.div>
+        ) : (
+          <motion.div
+            key="idle"
+            initial={{ opacity: 0, x: -24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -24 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto max-w-lg px-5 pb-10"
+          >
           {canPickFreely && (
             <motion.button
               whileTap={{ scale: 0.98 }}
@@ -214,37 +218,41 @@ export function Home() {
                       {category.name}
                     </span>
                   </div>
-                  <div className="-mx-5 flex gap-2.5 overflow-x-auto px-5 pb-1">
-                    {list.map((challenge) => {
-                      const done = state.validatedChallengeIds.includes(challenge.id)
-                      const disabled = locked || done
-                      return (
-                        <button
-                          key={challenge.id}
-                          onClick={() => !disabled && handlePick(challenge.id)}
-                          disabled={disabled}
-                          aria-label={challenge.title}
-                          title={challenge.title}
-                          className={`relative flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border border-black/10 dark:border-white/10 ${
-                            locked && !done ? 'opacity-40' : ''
-                          } ${done ? 'grayscale' : 'transition hover:-translate-y-0.5'}`}
-                          style={{ backgroundColor: `${category.hex}2E` }}
-                        >
-                          {done && (
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black text-cream">
-                              <Check size={11} />
-                            </span>
-                          )}
-                        </button>
-                      )
-                    })}
+                  <div className="relative -mx-5">
+                    <div className="flex gap-2.5 overflow-x-auto px-5 pb-1">
+                      {list.map((challenge) => {
+                        const done = state.validatedChallengeIds.includes(challenge.id)
+                        const disabled = locked || done
+                        return (
+                          <button
+                            key={challenge.id}
+                            onClick={() => !disabled && handlePick(challenge.id)}
+                            disabled={disabled}
+                            aria-label={challenge.title}
+                            title={challenge.title}
+                            className={`relative flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border border-black/10 dark:border-white/10 ${
+                              locked && !done ? 'opacity-40' : ''
+                            } ${done ? 'grayscale' : 'transition hover:-translate-y-0.5'}`}
+                            style={{ backgroundColor: `${category.hex}2E` }}
+                          >
+                            {done && (
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black text-cream">
+                                <Check size={11} />
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-cream to-transparent dark:from-neutral-950" />
                   </div>
                 </motion.div>
               )
             })}
           </div>
-        </div>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {overlays}
     </>
   )
