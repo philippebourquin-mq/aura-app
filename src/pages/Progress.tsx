@@ -1,25 +1,32 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Lock, RotateCcw, SkipForward } from 'lucide-react'
-import { categories } from '../data/categories'
+import { ArrowLeft, CheckCircle2, Clock, Flag, Lock, Plus, Shuffle, XCircle } from 'lucide-react'
+import { categories, categoryById } from '../data/categories'
 import { challenges, challengesByCategory } from '../data/challenges'
 import { useGameState } from '../state/useGameState'
 import { AuraGauge } from '../components/AuraGauge'
 import { RoleSwitcher } from '../components/RoleSwitcher'
+import { NewChallengeForm } from '../components/NewChallengeForm'
 import { achievements } from '../data/achievements'
 import { categoryIcons } from '../lib/categoryIcons'
+import type { CategoryId, HistoryOutcome } from '../types'
 
-const outcomeMeta = {
+const outcomeMeta: Record<HistoryOutcome, { label: string; icon: typeof CheckCircle2; className: string }> = {
   validated: { label: 'Validé', icon: CheckCircle2, className: 'text-emerald-600 dark:text-emerald-400' },
-  rejected: { label: 'Remis en jeu', icon: RotateCcw, className: 'text-black/40 dark:text-cream/40' },
-  skipped: { label: 'Joker utilisé', icon: SkipForward, className: 'text-black/40 dark:text-cream/40' },
+  declined: { label: 'Refusé', icon: XCircle, className: 'text-rose-500/80 dark:text-rose-400/80' },
+  'joker-out': { label: 'Joker', icon: Shuffle, className: 'text-black/40 dark:text-cream/40' },
+  'gave-up': { label: 'Abandonné', icon: Flag, className: 'text-rose-500/80 dark:text-rose-400/80' },
+  expired: { label: 'Expiré', icon: Clock, className: 'text-rose-500/80 dark:text-rose-400/80' },
+  'not-validated': { label: 'Non validé', icon: XCircle, className: 'text-rose-500/80 dark:text-rose-400/80' },
 }
 
 export function Progress() {
-  const { state, setRole } = useGameState()
-
-  const validatedChallenges = challenges.filter((c) => state.validatedChallengeIds.includes(c.id))
-  const totalPoints = validatedChallenges.reduce((sum, c) => sum + c.points, 0)
+  const game = useGameState()
+  const { state, setRole } = game
+  const [creatingFor, setCreatingFor] = useState<CategoryId | null>(null)
+  const allChallenges = [...challenges, ...state.customChallenges]
+  const creatingCategory = creatingFor ? categoryById(creatingFor) : null
 
   return (
     <div>
@@ -36,7 +43,7 @@ export function Progress() {
         <h1 className="font-display text-3xl text-black dark:text-cream">Profil de Lucas</h1>
 
         <div className="mt-6">
-          <AuraGauge points={totalPoints} />
+          <AuraGauge points={state.totalPoints} />
         </div>
 
         <div className="mt-8">
@@ -76,11 +83,18 @@ export function Progress() {
         </div>
 
         <div className="mt-8 space-y-4">
-          <h2 className="font-rounded text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-cream/60">
-            Avancement par catégorie
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-rounded text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-cream/60">
+              Avancement par catégorie
+            </h2>
+            {state.role === 'team' && (
+              <span className="font-rounded text-[11px] text-black/30 dark:text-cream/30">
+                + pour créer un défi perso
+              </span>
+            )}
+          </div>
           {categories.map((category) => {
-            const list = challengesByCategory(category.id)
+            const list = [...challengesByCategory(category.id), ...state.customChallenges.filter((c) => c.categoryId === category.id)]
             const done = list.filter((c) => state.validatedChallengeIds.includes(c.id)).length
             const pct = list.length === 0 ? 0 : Math.round((done / list.length) * 100)
             const Icon = categoryIcons[category.id]
@@ -108,6 +122,15 @@ export function Progress() {
                     />
                   </div>
                 </div>
+                {state.role === 'team' && (
+                  <button
+                    onClick={() => setCreatingFor(category.id)}
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-black/10 text-black/40 transition hover:bg-black/5 dark:border-white/10 dark:text-cream/40 dark:hover:bg-white/10"
+                    aria-label={`Créer un défi dans ${category.name}`}
+                  >
+                    <Plus size={16} />
+                  </button>
+                )}
               </div>
             )
           })}
@@ -120,7 +143,7 @@ export function Progress() {
             </h2>
             <ul className="space-y-2">
               {state.history.map((entry, i) => {
-                const challenge = challenges.find((c) => c.id === entry.challengeId)
+                const challenge = allChallenges.find((c) => c.id === entry.challengeId)
                 const meta = outcomeMeta[entry.outcome]
                 const Icon = meta.icon
                 return (
@@ -134,9 +157,22 @@ export function Progress() {
                     <span className="flex items-center gap-2 truncate">
                       <Icon size={14} className={meta.className} />
                       <span className="truncate">{challenge?.title ?? 'Défi'}</span>
+                      {entry.bonus && (
+                        <span className="font-rounded flex-shrink-0 rounded-full bg-black/5 px-1.5 py-0.5 text-[10px] font-bold text-black/40 dark:bg-white/10 dark:text-cream/40">
+                          x2
+                        </span>
+                      )}
                     </span>
-                    <span className="flex-shrink-0 font-semibold text-black/40 dark:text-cream/40">
-                      {entry.outcome === 'validated' ? `+${entry.points}` : meta.label}
+                    <span
+                      className={`flex-shrink-0 font-semibold ${
+                        entry.pointsDelta > 0
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : entry.pointsDelta < 0
+                            ? 'text-rose-500/80 dark:text-rose-400/80'
+                            : 'text-black/40 dark:text-cream/40'
+                      }`}
+                    >
+                      {entry.pointsDelta > 0 ? `+${entry.pointsDelta}` : entry.pointsDelta < 0 ? entry.pointsDelta : meta.label}
                     </span>
                   </motion.li>
                 )
@@ -145,6 +181,17 @@ export function Progress() {
           </div>
         )}
       </div>
+
+      {creatingCategory && (
+        <NewChallengeForm
+          category={creatingCategory}
+          onClose={() => setCreatingFor(null)}
+          onCreate={(input) => {
+            game.createCustomChallenge({ ...input, categoryId: creatingCategory.id })
+            setCreatingFor(null)
+          }}
+        />
+      )}
     </div>
   )
 }

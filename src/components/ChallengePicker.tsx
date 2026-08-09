@@ -1,25 +1,29 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { categories } from '../data/categories'
-import { challenges, challengesByCategory } from '../data/challenges'
+import { challenges } from '../data/challenges'
 import { SwipeDeck } from './SwipeDeck'
-import type { CategoryId } from '../types'
+import type { CategoryId, Challenge } from '../types'
 
 interface Props {
   validatedChallengeIds: string[]
-  /** Lock the picker to a single category (used when the team assigns a card within Lucas's chosen theme). */
+  /** Lock the picker to a single category (used when browsing in from a category tile). */
   lockedCategoryId?: CategoryId
+  /** Team-created cards, merged into the same deck as the physical catalog. */
+  customChallenges?: Challenge[]
   onPick: (challengeId: string) => void
 }
 
-export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, onPick }: Props) {
+export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, customChallenges = [], onPick }: Props) {
   const [filter, setFilter] = useState<CategoryId | 'all'>(lockedCategoryId ?? 'all')
   const [index, setIndex] = useState(0)
 
+  const allChallenges = useMemo(() => [...challenges, ...customChallenges], [customChallenges])
+
   const pool = useMemo(() => {
-    if (lockedCategoryId) return challengesByCategory(lockedCategoryId)
-    return filter === 'all' ? challenges : challengesByCategory(filter)
-  }, [lockedCategoryId, filter])
+    const activeFilter = lockedCategoryId ?? filter
+    return activeFilter === 'all' ? allChallenges : allChallenges.filter((c) => c.categoryId === activeFilter)
+  }, [lockedCategoryId, filter, allChallenges])
 
   useEffect(() => setIndex(0), [pool])
 

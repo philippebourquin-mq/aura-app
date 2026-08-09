@@ -20,6 +20,8 @@ export interface Challenge {
   title: string
   description: string
   points: number
+  /** Created by the team from the "new" screen, rather than the physical card catalog. */
+  custom?: boolean
 }
 
 export type JokerId = 'switch' | 'boomerang' | 'flemme'
@@ -37,36 +39,47 @@ export type Role = 'lucas' | 'team'
 export type RunOrigin = 'lucas' | 'team'
 
 /**
- * Lifecycle of the single active challenge slot. Lucas never has to declare
- * he's done — the team validates directly against the in-progress card.
+ * Lifecycle of the single active challenge slot, per docs/ARCHITECTURE.md.
  *
- * 'revealed' is the decision beat right after a card lands: jokers only make
- * sense here. Once accepted, the run moves to 'in-progress' — a full-screen
- * takeover with no jokers, just the challenge and the team's validate/reject.
+ * 'received' only exists for team-thrown runs: a card has been sent, Lucas
+ * hasn't decided yet. Jokers live here (Switch redraws and stays; Boomerang/
+ * Flemme close the run for free — no point loss — since that's what a joker
+ * is for; a bare decline closes it too but loses points).
  *
- * lucas flow:  (none) -> revealed -> in-progress -> (cleared, validated/rejected)
- * team flow:   (none) -> awaiting-category -> awaiting-card -> revealed -> in-progress -> (cleared)
+ * 'active' is the committed, running challenge — a real 24h clock, reached
+ * either straight from a free pick or after accepting a received one.
+ *
+ * lucas flow:  (none) -> active -> (cleared: validated / gave-up / expired / not-validated)
+ * team flow:   (none) -> received -> active -> (cleared, same outcomes + declined)
  */
-export type RunStatus = 'awaiting-category' | 'awaiting-card' | 'revealed' | 'in-progress'
+export type RunStatus = 'received' | 'active'
 
 export interface ChallengeRun {
   id: string
   origin: RunOrigin
   status: RunStatus
-  categoryId?: CategoryId
-  challengeId?: string
+  categoryId: CategoryId
+  challengeId: string
   createdAt: string
+  /** Set once the run becomes 'active' — ISO timestamp, 24h out. */
+  expiresAt?: string
 }
 
-export type HistoryOutcome = 'validated' | 'rejected' | 'skipped'
+/**
+ * 'joker-out' (Boomerang/Flemme) costs nothing — that's the point of a joker.
+ * Every other non-'validated' outcome subtracts the challenge's points (floored at 0).
+ */
+export type HistoryOutcome = 'validated' | 'declined' | 'joker-out' | 'gave-up' | 'expired' | 'not-validated'
 
 export interface HistoryEntry {
   id: string
   origin: RunOrigin
   outcome: HistoryOutcome
-  challengeId?: string
-  categoryId?: CategoryId
+  challengeId: string
+  categoryId: CategoryId
   jokerUsed?: JokerId
-  points?: number
+  /** Points earned (positive) or lost (negative) by this entry. */
+  pointsDelta: number
+  bonus?: boolean
   at: string
 }

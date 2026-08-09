@@ -7,6 +7,8 @@ import type { Category, Challenge } from '../types'
 interface Props {
   challenge: Challenge
   category: Category
+  amount: number
+  bonus?: boolean
   onContinue: () => void
 }
 
@@ -14,7 +16,7 @@ interface Props {
  * The payoff screen. Validating a challenge is the one moment in the app worth
  * a full takeover — bigger and louder than anything else in the flow.
  */
-export function CelebrationOverlay({ challenge, category, onContinue }: Props) {
+export function CelebrationOverlay({ challenge, category, amount, bonus, onContinue }: Props) {
   useEffect(() => {
     const colors = [category.hex, '#111111', '#F5EFDE']
     confetti({ particleCount: 90, spread: 70, origin: { y: 0.35 }, colors })
@@ -68,7 +70,7 @@ export function CelebrationOverlay({ challenge, category, onContinue }: Props) {
         className="rounded-full px-6 py-2.5 text-lg font-bold text-black"
         style={{ backgroundColor: category.hex }}
       >
-        +{challenge.points} pts
+        +{amount} pts{bonus ? ' · x2' : ''}
       </motion.div>
 
       <motion.button

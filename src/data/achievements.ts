@@ -47,4 +47,11 @@ export const achievements: Achievement[] = [
     emoji: '👑',
     isUnlocked: (state) => validatedCount(state) === challenges.length,
   },
+  {
+    id: 'perseverant',
+    name: 'Persévérant',
+    description: "Tente 5 défis — validés ou non, l'important c'est d'essayer.",
+    emoji: '🌊',
+    isUnlocked: (state) => state.history.length >= 5,
+  },
 ]

@@ -8,54 +8,78 @@ import { AuraGauge } from '../components/AuraGauge'
 import { CelebrationOverlay } from '../components/CelebrationOverlay'
 import { ChallengeTakeover } from '../components/ChallengeTakeover'
 import { CurrentRun } from '../components/CurrentRun'
+import { LossOverlay } from '../components/LossOverlay'
 import { RoleSwitcher } from '../components/RoleSwitcher'
 import { ChallengePicker } from '../components/ChallengePicker'
 import { categoryIcons } from '../lib/categoryIcons'
-import type { CategoryId, Category, Challenge } from '../types'
+import type { Category, CategoryId, Challenge, HistoryOutcome } from '../types'
+
+type LossState = { outcome: Exclude<HistoryOutcome, 'validated' | 'joker-out'>; title: string; pointsLost: number }
 
 export function Home() {
   const game = useGameState()
   const { state } = game
-  const [browsing, setBrowsing] = useState<CategoryId | null>(null)
+  const [browsing, setBrowsing] = useState<CategoryId | 'all' | null>(null)
   const [takeoverOpen, setTakeoverOpen] = useState(true)
-  const [celebration, setCelebration] = useState<{ challenge: Challenge; category: Category } | null>(null)
+  const [celebration, setCelebration] = useState<{ challenge: Challenge; category: Category; amount: number } | null>(
+    null,
+  )
+  const [loss, setLoss] = useState<LossState | null>(null)
 
   const run = state.currentRun
-  const activeChallenge = run?.challengeId ? challenges.find((c) => c.id === run.challengeId) : undefined
-  const activeCategory = run?.categoryId ? categoryById(run.categoryId) : undefined
+  const allChallenges = [...challenges, ...state.customChallenges]
+  const activeChallenge = run ? allChallenges.find((c) => c.id === run.challengeId) : undefined
 
-  // Re-open the takeover whenever a fresh run gets accepted, even if a previous one was minimized.
+  // Re-open the takeover whenever a fresh run goes active, even if a previous one was minimized.
   const prevStatusRef = useRef(run?.status)
   useEffect(() => {
     const prevStatus = prevStatusRef.current
     prevStatusRef.current = run?.status
-    if (run?.status === 'in-progress' && prevStatus !== 'in-progress') {
+    if (run?.status === 'active' && prevStatus !== 'active') {
       setTakeoverOpen(true)
     }
   }, [run?.status])
 
-  const handleValidate = () => {
-    if (!activeChallenge || !activeCategory) return
-    setCelebration({ challenge: activeChallenge, category: activeCategory })
-    game.teamValidate()
+  // Every outcome carries what its overlay needs, so drive both from the journal directly —
+  // this also catches auto-expiry, which fires from a background timer, not a button.
+  const lastHistoryIdRef = useRef(state.history[0]?.id)
+  useEffect(() => {
+    const latest = state.history[0]
+    if (!latest || latest.id === lastHistoryIdRef.current) return
+    lastHistoryIdRef.current = latest.id
+    const c = allChallenges.find((ch) => ch.id === latest.challengeId)
+    if (latest.outcome === 'joker-out') return // free and quiet, by design
+    if (latest.outcome === 'validated') {
+      const cat = categoryById(latest.categoryId)
+      if (c && cat) setCelebration({ challenge: c, category: cat, amount: latest.pointsDelta })
+      return
+    }
+    setLoss({ outcome: latest.outcome, title: c?.title ?? 'Défi', pointsLost: -latest.pointsDelta })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.history])
+
+  const canPickFreely = !state.currentRun
+  const browsingCategory = browsing && browsing !== 'all' ? categoryById(browsing) : null
+  const isBrowsing = canPickFreely && browsing !== null
+
+  const handlePick = (challengeId: string) => {
+    if (state.role === 'lucas') game.lucasPickChallenge(challengeId)
+    else game.teamSendChallenge(challengeId)
+    setBrowsing(null)
   }
-
-  const totalPoints = challenges
-    .filter((c) => state.validatedChallengeIds.includes(c.id))
-    .reduce((sum, c) => sum + c.points, 0)
-
-  const canPickFreely = state.role === 'lucas' && !state.currentRun
-  const browsingCategory = browsing ? categoryById(browsing) : null
 
   const overlays = (
     <>
       <AnimatePresence>
-        {run?.status === 'in-progress' && activeChallenge && takeoverOpen && (
+        {run?.status === 'active' && activeChallenge && takeoverOpen && (
           <ChallengeTakeover
             challenge={activeChallenge}
+            origin={run.origin}
+            expiresAt={run.expiresAt}
             role={state.role}
-            onValidate={handleValidate}
-            onReject={() => game.teamReject()}
+            onValidate={game.teamValidate}
+            onDeny={game.teamDeny}
+            onGiveUp={game.lucasGiveUp}
             onMinimize={() => setTakeoverOpen(false)}
             onSwitchRole={game.setRole}
           />
@@ -66,7 +90,19 @@ export function Home() {
           <CelebrationOverlay
             challenge={celebration.challenge}
             category={celebration.category}
+            amount={celebration.amount}
+            bonus={celebration.amount > celebration.challenge.points}
             onContinue={() => setCelebration(null)}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {loss && (
+          <LossOverlay
+            outcome={loss.outcome}
+            challengeTitle={loss.title}
+            pointsLost={loss.pointsLost}
+            onContinue={() => setLoss(null)}
           />
         )}
       </AnimatePresence>
@@ -74,8 +110,8 @@ export function Home() {
   )
 
   // Free-choice browsing happens inline, right here on the home screen — no page navigation.
-  if (canPickFreely && browsingCategory) {
-    const Icon = categoryIcons[browsingCategory.id]
+  if (isBrowsing) {
+    const Icon = browsingCategory ? categoryIcons[browsingCategory.id] : null
     return (
       <>
         <div>
@@ -85,29 +121,35 @@ export function Home() {
               onClick={() => setBrowsing(null)}
               className="font-rounded mb-6 inline-flex items-center gap-1 text-sm text-black/60 hover:text-black dark:text-cream/60 dark:hover:text-cream"
             >
-              <ArrowLeft size={16} /> Retour aux thèmes
+              <ArrowLeft size={16} /> Retour
             </button>
 
             <div className="mb-8 flex items-center justify-center gap-3 text-center">
-              <div
-                className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full"
-                style={{ backgroundColor: browsingCategory.hex }}
-              >
-                <Icon size={20} className="text-black/70" />
-              </div>
-              <div className="text-left">
-                <h1 className="font-display text-2xl text-black dark:text-cream">{browsingCategory.name}</h1>
-                <p className="font-rounded text-sm text-black/60 dark:text-cream/60">{browsingCategory.tagline}</p>
-              </div>
+              {browsingCategory && Icon ? (
+                <>
+                  <div
+                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: browsingCategory.hex }}
+                  >
+                    <Icon size={20} className="text-black/70" />
+                  </div>
+                  <div className="text-left">
+                    <h1 className="font-display text-2xl text-black dark:text-cream">{browsingCategory.name}</h1>
+                    <p className="font-rounded text-sm text-black/60 dark:text-cream/60">{browsingCategory.tagline}</p>
+                  </div>
+                </>
+              ) : (
+                <h1 className="font-display text-2xl text-black dark:text-cream">
+                  {state.role === 'lucas' ? 'Choisis un défi à réaliser' : 'Choisis un défi pour Lucas'}
+                </h1>
+              )}
             </div>
 
             <ChallengePicker
               validatedChallengeIds={state.validatedChallengeIds}
-              lockedCategoryId={browsingCategory.id}
-              onPick={(id) => {
-                game.lucasPickChallenge(id)
-                setBrowsing(null)
-              }}
+              lockedCategoryId={browsingCategory?.id}
+              customChallenges={state.customChallenges}
+              onPick={handlePick}
             />
           </div>
         </div>
@@ -133,10 +175,22 @@ export function Home() {
             </p>
           </header>
 
-          <AuraGauge points={totalPoints} />
+          <AuraGauge points={state.totalPoints} />
+
+          {canPickFreely && (
+            <div className="mt-6 flex justify-center">
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setBrowsing('all')}
+                className="font-rounded inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-bold text-cream shadow-lg"
+              >
+                {state.role === 'lucas' ? 'Lance-toi un défi →' : 'Lance un défi à Lucas →'}
+              </motion.button>
+            </div>
+          )}
 
           <div className="mt-6">
-            {run?.status === 'in-progress' && activeChallenge ? (
+            {run?.status === 'active' && activeChallenge ? (
               !takeoverOpen && (
                 <motion.button
                   initial={{ opacity: 0, y: -6 }}
@@ -166,76 +220,71 @@ export function Home() {
             )}
           </div>
 
-        <div className="mt-8">
-          {canPickFreely && (
-            <p className="font-rounded mb-3 text-center text-sm font-semibold text-black/70 dark:text-cream/70">
-              Ou choisis toi-même un défi par thème :
-            </p>
-          )}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            {categories.map((category, i) => {
-              const list = challengesByCategory(category.id)
-              const done = list.filter((c) => state.validatedChallengeIds.includes(c.id)).length
-              const pct = Math.round((done / list.length) * 100)
-              const Icon = categoryIcons[category.id]
-              const locked = state.role === 'lucas' && !!state.currentRun
+          <div className="mt-8">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              {categories.map((category, i) => {
+                const list = [...challengesByCategory(category.id), ...state.customChallenges.filter((c) => c.categoryId === category.id)]
+                const done = list.filter((c) => state.validatedChallengeIds.includes(c.id)).length
+                const pct = list.length === 0 ? 0 : Math.round((done / list.length) * 100)
+                const Icon = categoryIcons[category.id]
+                const locked = !canPickFreely
 
-              const content = (
-                <>
-                  <div>
-                    <div
-                      className="flex h-10 w-10 items-center justify-center rounded-full"
-                      style={{ backgroundColor: category.hex }}
-                    >
-                      <Icon size={20} className="text-black" />
-                    </div>
-                    <h3 className="font-display mt-3 text-base leading-tight text-black dark:text-cream">
-                      {category.name}
-                    </h3>
-                    <p className="font-rounded mt-1 text-xs text-black/50 dark:text-cream/50">
-                      {category.tagline}
-                    </p>
-                  </div>
-
-                  <div className="mt-4">
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+                const content = (
+                  <>
+                    <div>
                       <div
-                        className="h-full rounded-full transition-all"
-                        style={{ width: `${pct}%`, backgroundColor: category.hex }}
-                      />
+                        className="flex h-10 w-10 items-center justify-center rounded-full"
+                        style={{ backgroundColor: category.hex }}
+                      >
+                        <Icon size={20} className="text-black" />
+                      </div>
+                      <h3 className="font-display mt-3 text-base leading-tight text-black dark:text-cream">
+                        {category.name}
+                      </h3>
+                      <p className="font-rounded mt-1 text-xs text-black/50 dark:text-cream/50">
+                        {category.tagline}
+                      </p>
                     </div>
-                    <p className="font-rounded mt-1 text-[11px] text-black/40 dark:text-cream/40">
-                      {done}/{list.length} validés
-                    </p>
-                  </div>
-                </>
-              )
 
-              return (
-                <motion.div
-                  key={category.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0, filter: locked ? 'grayscale(60%)' : 'grayscale(0%)' }}
-                  transition={{ delay: i * 0.05, duration: 0.3 }}
-                  whileTap={locked ? undefined : { scale: 0.96 }}
-                >
-                  {state.role === 'lucas' && !locked ? (
-                    <button
-                      onClick={() => setBrowsing(category.id)}
-                      className="flex h-full w-full flex-col justify-between rounded-card border border-black/10 bg-white/60 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-white/10 dark:bg-white/5"
-                    >
-                      {content}
-                    </button>
-                  ) : (
-                    <div className="flex h-full flex-col justify-between rounded-card border border-black/10 bg-white/60 p-4 opacity-60 dark:border-white/10 dark:bg-white/5">
-                      {content}
+                    <div className="mt-4">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${pct}%`, backgroundColor: category.hex }}
+                        />
+                      </div>
+                      <p className="font-rounded mt-1 text-[11px] text-black/40 dark:text-cream/40">
+                        {done}/{list.length} validés
+                      </p>
                     </div>
-                  )}
-                </motion.div>
-              )
-            })}
+                  </>
+                )
+
+                return (
+                  <motion.div
+                    key={category.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0, filter: locked ? 'grayscale(60%)' : 'grayscale(0%)' }}
+                    transition={{ delay: i * 0.05, duration: 0.3 }}
+                    whileTap={locked ? undefined : { scale: 0.96 }}
+                  >
+                    {!locked ? (
+                      <button
+                        onClick={() => setBrowsing(category.id)}
+                        className="flex h-full w-full flex-col justify-between rounded-card border border-black/10 bg-white/60 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-white/10 dark:bg-white/5"
+                      >
+                        {content}
+                      </button>
+                    ) : (
+                      <div className="flex h-full flex-col justify-between rounded-card border border-black/10 bg-white/60 p-4 opacity-60 dark:border-white/10 dark:bg-white/5">
+                        {content}
+                      </div>
+                    )}
+                  </motion.div>
+                )
+              })}
+            </div>
           </div>
-        </div>
         </div>
       </div>
       {overlays}
