@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowLeft, ChevronUp } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, ChevronUp } from 'lucide-react'
 import { categories, categoryById } from '../data/categories'
 import { challenges, challengesByCategory } from '../data/challenges'
 import { useGameState } from '../state/useGameState'
-import { AuraGauge } from '../components/AuraGauge'
+import { AppHeader } from '../components/AppHeader'
 import { CelebrationOverlay } from '../components/CelebrationOverlay'
 import { ChallengeTakeover } from '../components/ChallengeTakeover'
 import { CurrentRun } from '../components/CurrentRun'
 import { LossOverlay } from '../components/LossOverlay'
-import { RoleSwitcher } from '../components/RoleSwitcher'
 import { ChallengePicker } from '../components/ChallengePicker'
 import { categoryIcons } from '../lib/categoryIcons'
 import type { Category, CategoryId, Challenge, HistoryOutcome } from '../types'
@@ -77,6 +76,7 @@ export function Home() {
             origin={run.origin}
             expiresAt={run.expiresAt}
             role={state.role}
+            points={state.totalPoints}
             onValidate={game.teamValidate}
             onDeny={game.teamDeny}
             onGiveUp={game.lucasGiveUp}
@@ -111,39 +111,21 @@ export function Home() {
 
   // Free-choice browsing happens inline, right here on the home screen — no page navigation.
   if (isBrowsing) {
-    const Icon = browsingCategory ? categoryIcons[browsingCategory.id] : null
     return (
       <>
         <div>
-          <RoleSwitcher role={state.role} onChange={game.setRole} showProfileLink />
-          <div className="mx-auto max-w-lg px-6 pt-4 pb-10">
+          <AppHeader points={state.totalPoints} role={state.role} onRoleChange={game.setRole} />
+          <div className="mx-auto max-w-lg px-6 pt-3 pb-10">
             <button
               onClick={() => setBrowsing(null)}
-              className="font-rounded mb-6 inline-flex items-center gap-1 text-sm text-black/60 hover:text-black dark:text-cream/60 dark:hover:text-cream"
+              className="font-rounded mb-5 inline-flex items-center gap-1 text-sm text-black/60 hover:text-black dark:text-cream/60 dark:hover:text-cream"
             >
               <ArrowLeft size={16} /> Retour
             </button>
 
-            <div className="mb-8 flex items-center justify-center gap-3 text-center">
-              {browsingCategory && Icon ? (
-                <>
-                  <div
-                    className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full"
-                    style={{ backgroundColor: browsingCategory.hex }}
-                  >
-                    <Icon size={20} className="text-black/70" />
-                  </div>
-                  <div className="text-left">
-                    <h1 className="font-display text-2xl text-black dark:text-cream">{browsingCategory.name}</h1>
-                    <p className="font-rounded text-sm text-black/60 dark:text-cream/60">{browsingCategory.tagline}</p>
-                  </div>
-                </>
-              ) : (
-                <h1 className="font-display text-2xl text-black dark:text-cream">
-                  {state.role === 'lucas' ? 'Choisis un défi à réaliser' : 'Choisis un défi pour Lucas'}
-                </h1>
-              )}
-            </div>
+            <h1 className="font-display mb-6 text-2xl text-black dark:text-cream">
+              {state.role === 'lucas' ? 'Choisis un défi à réaliser' : 'Choisis un défi pour Lucas'}
+            </h1>
 
             <ChallengePicker
               validatedChallengeIds={state.validatedChallengeIds}
@@ -161,35 +143,25 @@ export function Home() {
   return (
     <>
       <div>
-        <RoleSwitcher role={state.role} onChange={game.setRole} showProfileLink />
+        <AppHeader points={state.totalPoints} role={state.role} onRoleChange={game.setRole} wordmark />
 
-        <div className="mx-auto max-w-4xl px-5 pt-4">
-          <header className="mb-6 text-center">
-            <h1 className="font-display text-3xl tracking-[0.3em] text-black dark:text-cream">
-              A U R A
-            </h1>
-            <p className="font-rounded mx-auto mt-2 max-w-sm text-sm text-black/60 dark:text-cream/60">
-              {state.role === 'lucas'
-                ? "Choisis un défi, ou attends que ta team t'en lance un."
-                : "Suis la progression de Lucas, lance-lui un défi ou valide ce qu'il a fait."}
-            </p>
-          </header>
-
-          <AuraGauge points={state.totalPoints} />
-
+        <div className="mx-auto max-w-lg px-5 pb-10">
           {canPickFreely && (
-            <div className="mt-6 flex justify-center">
-              <motion.button
-                whileTap={{ scale: 0.96 }}
-                onClick={() => setBrowsing('all')}
-                className="font-rounded inline-flex items-center gap-2 rounded-full bg-black px-6 py-3 text-sm font-bold text-cream shadow-lg"
-              >
-                {state.role === 'lucas' ? 'Lance-toi un défi →' : 'Lance un défi à Lucas →'}
-              </motion.button>
-            </div>
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setBrowsing('all')}
+              className="font-rounded mt-4 flex w-full items-center justify-between rounded-card border border-black/10 bg-white/60 px-4 py-3.5 text-left dark:border-white/10 dark:bg-white/5"
+            >
+              <span className="text-sm font-bold text-black dark:text-cream">
+                {state.role === 'lucas' ? 'Lance-toi un défi' : 'Lance un défi à Lucas'}
+              </span>
+              <span className="flex h-8 w-12 flex-shrink-0 items-center justify-center rounded-full bg-black text-cream">
+                <ArrowRight size={15} />
+              </span>
+            </motion.button>
           )}
 
-          <div className="mt-6">
+          <div className="mt-5">
             {run?.status === 'active' && activeChallenge ? (
               !takeoverOpen && (
                 <motion.button
@@ -220,70 +192,43 @@ export function Home() {
             )}
           </div>
 
-          <div className="mt-8">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              {categories.map((category, i) => {
-                const list = [...challengesByCategory(category.id), ...state.customChallenges.filter((c) => c.categoryId === category.id)]
-                const done = list.filter((c) => state.validatedChallengeIds.includes(c.id)).length
-                const pct = list.length === 0 ? 0 : Math.round((done / list.length) * 100)
-                const Icon = categoryIcons[category.id]
-                const locked = !canPickFreely
+          <div className="mt-5 grid grid-cols-3 gap-3">
+            {categories.map((category, i) => {
+              const list = [
+                ...challengesByCategory(category.id),
+                ...state.customChallenges.filter((c) => c.categoryId === category.id),
+              ]
+              const done = list.filter((c) => state.validatedChallengeIds.includes(c.id)).length
+              const complete = list.length > 0 && done === list.length
+              const Icon = categoryIcons[category.id]
+              const locked = !canPickFreely
 
-                const content = (
-                  <>
-                    <div>
-                      <div
-                        className="flex h-10 w-10 items-center justify-center rounded-full"
-                        style={{ backgroundColor: category.hex }}
-                      >
-                        <Icon size={20} className="text-black" />
-                      </div>
-                      <h3 className="font-display mt-3 text-base leading-tight text-black dark:text-cream">
-                        {category.name}
-                      </h3>
-                      <p className="font-rounded mt-1 text-xs text-black/50 dark:text-cream/50">
-                        {category.tagline}
-                      </p>
-                    </div>
-
-                    <div className="mt-4">
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${pct}%`, backgroundColor: category.hex }}
-                        />
-                      </div>
-                      <p className="font-rounded mt-1 text-[11px] text-black/40 dark:text-cream/40">
-                        {done}/{list.length} validés
-                      </p>
-                    </div>
-                  </>
-                )
-
-                return (
-                  <motion.div
-                    key={category.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0, filter: locked ? 'grayscale(60%)' : 'grayscale(0%)' }}
-                    transition={{ delay: i * 0.05, duration: 0.3 }}
-                    whileTap={locked ? undefined : { scale: 0.96 }}
+              return (
+                <motion.div
+                  key={category.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0, filter: locked ? 'grayscale(60%)' : 'grayscale(0%)' }}
+                  transition={{ delay: i * 0.03, duration: 0.25 }}
+                >
+                  <button
+                    onClick={() => !locked && setBrowsing(category.id)}
+                    disabled={locked}
+                    aria-label={category.name}
+                    className={`relative flex aspect-square w-full items-center justify-center rounded-2xl border border-black/10 dark:border-white/10 ${
+                      locked ? 'opacity-50' : 'transition hover:-translate-y-0.5'
+                    }`}
+                    style={{ backgroundColor: `${category.hex}2E` }}
                   >
-                    {!locked ? (
-                      <button
-                        onClick={() => setBrowsing(category.id)}
-                        className="flex h-full w-full flex-col justify-between rounded-card border border-black/10 bg-white/60 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-white/10 dark:bg-white/5"
-                      >
-                        {content}
-                      </button>
-                    ) : (
-                      <div className="flex h-full flex-col justify-between rounded-card border border-black/10 bg-white/60 p-4 opacity-60 dark:border-white/10 dark:bg-white/5">
-                        {content}
-                      </div>
+                    <Icon size={22} style={{ color: category.hex }} />
+                    {complete && (
+                      <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-black text-cream">
+                        <Check size={10} />
+                      </span>
                     )}
-                  </motion.div>
-                )
-              })}
-            </div>
+                  </button>
+                </motion.div>
+              )
+            })}
           </div>
         </div>
       </div>

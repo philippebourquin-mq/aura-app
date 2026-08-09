@@ -33,30 +33,26 @@ export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, custo
   return (
     <div>
       {!lockedCategoryId && (
-        <div className="mb-4 flex flex-wrap justify-center gap-2">
+        <div className="mb-5 flex flex-wrap justify-center gap-3">
           <button
             onClick={() => setFilter('all')}
-            className={`font-rounded rounded-full border px-3 py-1 text-xs font-semibold transition ${
-              filter === 'all'
-                ? 'border-black bg-black text-cream'
-                : 'border-black/20 text-black/60 hover:bg-black/5 dark:border-white/20 dark:text-cream/60 dark:hover:bg-white/10'
+            aria-label="Toutes les catégories"
+            title="Toutes"
+            className={`h-6 w-6 flex-shrink-0 rounded-full border-2 bg-black transition ${
+              filter === 'all' ? 'border-black scale-110 dark:border-cream' : 'border-transparent opacity-40'
             }`}
-          >
-            Toutes
-          </button>
+          />
           {categories.map((c) => (
             <button
               key={c.id}
               onClick={() => setFilter(c.id)}
-              className={`font-rounded rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                filter === c.id
-                  ? 'text-black'
-                  : 'border-black/20 text-black/60 hover:bg-black/5 dark:border-white/20 dark:text-cream/60 dark:hover:bg-white/10'
+              aria-label={c.name}
+              title={c.name}
+              className={`h-6 w-6 flex-shrink-0 rounded-full border-2 transition ${
+                filter === c.id ? 'scale-110 border-black dark:border-cream' : 'border-transparent opacity-40'
               }`}
-              style={filter === c.id ? { backgroundColor: c.hex, borderColor: c.hex } : undefined}
-            >
-              {c.name}
-            </button>
+              style={{ backgroundColor: c.hex }}
+            />
           ))}
         </div>
       )}

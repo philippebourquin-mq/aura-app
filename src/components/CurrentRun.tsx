@@ -1,18 +1,24 @@
 import { motion } from 'framer-motion'
-import { Hourglass, X } from 'lucide-react'
+import { Hourglass, Moon, Repeat2, Shuffle, X, type LucideIcon } from 'lucide-react'
 import { categoryById, jokers } from '../data/categories'
 import { challenges } from '../data/challenges'
 import { ChallengeCard } from './ChallengeCard'
-import { JokerCard } from './JokerCard'
 import type { useGameState } from '../state/useGameState'
 import type { JokerId } from '../types'
 
 type Game = ReturnType<typeof useGameState>
 
+const jokerIcons: Record<JokerId, LucideIcon> = {
+  switch: Shuffle,
+  boomerang: Repeat2,
+  flemme: Moon,
+}
+
 /**
  * Everything up to the moment Lucas commits: idle, and the 'received' decision
- * beat for a team-thrown challenge. 'active' is a full-screen takeover owned
- * by Home instead — nothing competes with it once Lucas is actually doing it.
+ * beat for a team-thrown challenge — "On t'a lancé un défi" in the wireframe,
+ * with its Accepter / Joker / Refuser row. 'active' is a full-screen takeover
+ * owned by Home instead.
  */
 export function CurrentRun({ game }: { game: Game }) {
   const { state } = game
@@ -38,7 +44,6 @@ export function CurrentRun({ game }: { game: Game }) {
   }
 
   const availableJokers = jokers.filter((j) => !state.jokersUsed.includes(j.id as JokerId))
-  const jokerChoices = availableJokers.filter((j) => j.id === 'switch' || run.origin === 'team')
 
   return (
     <div className="flex flex-col items-center gap-5">
@@ -53,44 +58,52 @@ export function CurrentRun({ game }: { game: Game }) {
       </motion.div>
 
       <p className="font-rounded text-center text-sm font-semibold text-black dark:text-cream">
-        Ta team te lance ce défi. Tu as 24h une fois lancé.
+        On t'a lancé un défi. Tu as 24h une fois accepté.
       </p>
 
-      <motion.button
-        whileTap={{ scale: 0.96 }}
-        onClick={() => game.lucasAcceptReceived()}
-        className="font-rounded rounded-full bg-black px-8 py-3.5 text-sm font-bold text-cream shadow-lg"
-      >
-        Accepter →
-      </motion.button>
+      <div className="flex items-center gap-3">
+        <motion.button
+          whileTap={{ scale: 0.92 }}
+          onClick={() => game.lucasAcceptReceived()}
+          aria-label="Accepter le défi"
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-black text-cream shadow-lg"
+        >
+          <span className="font-rounded text-xs font-bold">OK</span>
+        </motion.button>
 
-      {jokerChoices.length > 0 && (
-        <div>
-          <p className="font-rounded mb-2 text-center text-xs font-semibold uppercase tracking-wide text-black/50 dark:text-cream/50">
-            Ou utilise un joker — gratuit, une seule fois chacun
-          </p>
-          <div className="flex justify-center gap-2">
-            {jokerChoices.map((j) => (
-              <JokerCard
-                key={j.id}
-                joker={j}
-                onClick={() => {
-                  if (j.id === 'switch') game.lucasSwitchReceived()
-                  else game.lucasCloseWithJoker(j.id as 'boomerang' | 'flemme')
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+        {availableJokers.map((j) => {
+          const Icon = jokerIcons[j.id as JokerId]
+          return (
+            <motion.button
+              key={j.id}
+              whileTap={{ scale: 0.92 }}
+              onClick={() => {
+                if (j.id === 'switch') game.lucasSwitchReceived()
+                else game.lucasCloseWithJoker(j.id as 'boomerang' | 'flemme')
+              }}
+              aria-label={j.name}
+              title={j.effect}
+              className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-black/15 text-black/60 dark:border-white/15 dark:text-cream/60"
+            >
+              <Icon size={18} />
+            </motion.button>
+          )
+        })}
 
-      <motion.button
-        whileTap={{ scale: 0.96 }}
-        onClick={() => game.lucasDeclineHard()}
-        className="font-rounded inline-flex items-center gap-1.5 text-xs font-semibold text-black/40 hover:text-black/60 dark:text-cream/40 dark:hover:text-cream/60"
-      >
-        <X size={14} /> Refuser sans joker — perd {challenge.points} pts
-      </motion.button>
+        <motion.button
+          whileTap={{ scale: 0.92 }}
+          onClick={() => game.lucasDeclineHard()}
+          aria-label="Refuser le défi"
+          title={`Refuser — perd ${challenge.points} pts`}
+          className="flex h-14 w-14 items-center justify-center rounded-full bg-black text-cream shadow-lg"
+        >
+          <X size={20} />
+        </motion.button>
+      </div>
+
+      <p className="font-rounded text-center text-[11px] text-black/40 dark:text-cream/40">
+        Jokers gratuits, une fois chacun · refuser perd {challenge.points} pts
+      </p>
     </div>
   )
 }

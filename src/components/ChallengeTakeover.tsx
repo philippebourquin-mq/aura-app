@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
-import { ChevronDown, Repeat, ThumbsDown, ThumbsUp, TimerReset } from 'lucide-react'
+import { Check, ChevronDown, X } from 'lucide-react'
 import { ChallengeCard } from './ChallengeCard'
+import { AppHeader } from './AppHeader'
 import { useCountdown } from '../lib/countdown'
 import type { Challenge, Role, RunOrigin } from '../types'
 
@@ -9,6 +10,7 @@ interface Props {
   origin: RunOrigin
   expiresAt?: string
   role: Role
+  points: number
   onValidate: () => void
   onDeny: () => void
   onGiveUp: () => void
@@ -17,16 +19,17 @@ interface Props {
 }
 
 /**
- * Full-screen focus mode for an accepted, running challenge. Once Lucas commits,
- * this is the only thing on screen — no gauge, no grid, no jokers. The real 24h
- * clock lives here, along with the real stakes: validate earns (doubled if Lucas
- * picked it himself), deny or give-up lose the points.
+ * Full-screen focus mode for an accepted, running challenge — "Tu as un défi en
+ * cours" / "Lucas a un défi en cours" in the wireframe. Once Lucas commits, this
+ * is the only thing on screen. Team's resolution is the two big circular buttons
+ * from the "Lucas a terminé son défi" wireframe.
  */
 export function ChallengeTakeover({
   challenge,
   origin,
   expiresAt,
   role,
+  points,
   onValidate,
   onDeny,
   onGiveUp,
@@ -43,32 +46,22 @@ export function ChallengeTakeover({
       transition={{ duration: 0.2 }}
       className="fixed inset-0 z-40 flex flex-col overflow-y-auto bg-cream dark:bg-neutral-950"
     >
-      <div className="flex items-center justify-between px-5 pt-5">
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={onMinimize}
-          className="font-rounded inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold text-black/50 hover:bg-black/5 dark:text-cream/50 dark:hover:bg-white/10"
-        >
-          <ChevronDown size={15} /> Réduire
-        </motion.button>
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => onSwitchRole(role === 'lucas' ? 'team' : 'lucas')}
-          className="font-rounded inline-flex items-center gap-1.5 rounded-full border border-black/10 px-3 py-1.5 text-xs font-semibold text-black/50 hover:bg-black/5 dark:border-white/10 dark:text-cream/50 dark:hover:bg-white/10"
-        >
-          <Repeat size={13} /> Voir côté {role === 'lucas' ? 'Team' : 'Lucas'}
-        </motion.button>
-      </div>
+      <AppHeader points={points} role={role} onRoleChange={onSwitchRole} />
+      <button
+        onClick={onMinimize}
+        className="font-rounded mx-5 -mt-1 inline-flex w-fit items-center gap-1 text-xs font-semibold text-black/40 hover:text-black/60 dark:text-cream/40 dark:hover:text-cream/60"
+      >
+        <ChevronDown size={14} /> Réduire
+      </button>
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-8">
-        <div
-          className={`font-rounded inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
-            expired
-              ? 'bg-black/10 text-black/40 dark:bg-white/10 dark:text-cream/40'
-              : 'bg-black text-cream'
-          }`}
-        >
-          <TimerReset size={13} /> {expired ? 'Temps écoulé' : `Expire dans ${label}`}
+      <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-6">
+        <div className="text-center">
+          <p className="font-rounded text-base font-bold text-black dark:text-cream">
+            {role === 'lucas' ? 'Tu as un défi en cours' : 'Lucas a un défi en cours'}
+          </p>
+          <p className="font-rounded mt-1 text-sm text-black/50 dark:text-cream/50">
+            {expired ? 'Temps écoulé' : `Expire dans ${label}`}
+          </p>
         </div>
 
         <motion.div
@@ -87,38 +80,32 @@ export function ChallengeTakeover({
         )}
 
         {role === 'lucas' && (
-          <div className="flex flex-col items-center gap-3">
-            <p className="font-rounded max-w-xs text-center text-base font-semibold text-black/70 dark:text-cream/70">
-              Fais ton défi dans la vraie vie — ta team validera. 💪
-            </p>
-            <button
-              onClick={onGiveUp}
-              className="font-rounded text-xs font-semibold text-black/40 hover:text-black/60 dark:text-cream/40 dark:hover:text-cream/60"
-            >
-              Abandonner — perd {challenge.points} pts
-            </button>
-          </div>
+          <button
+            onClick={onGiveUp}
+            className="font-rounded text-xs font-semibold text-black/40 hover:text-black/60 dark:text-cream/40 dark:hover:text-cream/60"
+          >
+            Abandonner — perd {challenge.points} pts
+          </button>
         )}
 
         {role === 'team' && (
-          <div className="flex flex-col items-center gap-4">
-            <p className="font-rounded text-sm text-black/50 dark:text-cream/50">
-              Résolution — à tout moment
-            </p>
-            <div className="flex gap-3">
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex gap-5">
               <motion.button
-                whileTap={{ scale: 0.95 }}
+                whileTap={{ scale: 0.92 }}
                 onClick={onValidate}
-                className="font-rounded inline-flex items-center gap-2 rounded-full bg-black px-7 py-3.5 text-base font-bold text-cream shadow-lg"
+                aria-label="Valider le défi"
+                className="flex h-16 w-16 items-center justify-center rounded-full bg-black text-cream shadow-lg"
               >
-                <ThumbsUp size={18} /> Valider
+                <Check size={26} />
               </motion.button>
               <motion.button
-                whileTap={{ scale: 0.95 }}
+                whileTap={{ scale: 0.92 }}
                 onClick={onDeny}
-                className="font-rounded inline-flex items-center gap-2 rounded-full border border-black/20 px-5 py-3.5 text-sm font-semibold text-black/60 hover:bg-black/5 dark:border-white/20 dark:text-cream/60 dark:hover:bg-white/10"
+                aria-label="Refuser le défi"
+                className="flex h-16 w-16 items-center justify-center rounded-full bg-black text-cream shadow-lg"
               >
-                <ThumbsDown size={16} /> Refuser
+                <X size={26} />
               </motion.button>
             </div>
             <p className="font-rounded text-xs text-black/40 dark:text-cream/40">

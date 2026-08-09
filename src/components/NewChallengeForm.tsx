@@ -9,11 +9,13 @@ interface Props {
   onClose: () => void
 }
 
+const POINT_PRESETS = [200, 400, 600, 800, 1000]
+
 /** "new" — the team writes a custom card for a given category, pre-set by where they tapped "+". */
 export function NewChallengeForm({ category, onCreate, onClose }: Props) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [points, setPoints] = useState(500)
+  const [points, setPoints] = useState(600)
 
   const canSubmit = title.trim().length > 0 && description.trim().length > 0 && points > 0
 
@@ -34,15 +36,7 @@ export function NewChallengeForm({ category, onCreate, onClose }: Props) {
         className="w-full max-w-sm rounded-t-card bg-cream p-6 dark:bg-neutral-900 sm:rounded-card"
       >
         <div className="mb-4 flex items-center justify-between">
-          <div>
-            <p
-              className="font-rounded inline-block rounded-full px-2.5 py-0.5 text-xs font-bold text-black"
-              style={{ backgroundColor: category.hex }}
-            >
-              {category.name}
-            </p>
-            <h2 className="font-display mt-1 text-xl text-black dark:text-cream">Nouveau défi</h2>
-          </div>
+          <h2 className="font-display text-xl text-black dark:text-cream">Nouveau défi</h2>
           <button
             onClick={onClose}
             className="rounded-full p-1.5 text-black/40 hover:bg-black/5 dark:text-cream/40 dark:hover:bg-white/10"
@@ -57,27 +51,36 @@ export function NewChallengeForm({ category, onCreate, onClose }: Props) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Titre du défi"
-            className="font-rounded w-full rounded-lg border border-black/10 bg-white px-3.5 py-2.5 text-sm text-black outline-none focus:border-black/30 dark:border-white/10 dark:bg-white/5 dark:text-cream"
+            className="font-rounded w-full rounded-full border border-black/10 bg-white px-4 py-3 text-sm text-black outline-none focus:border-black/30 dark:border-white/10 dark:bg-white/5 dark:text-cream"
           />
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Décris le défi..."
             rows={3}
-            className="font-rounded w-full resize-none rounded-lg border border-black/10 bg-white px-3.5 py-2.5 text-sm text-black outline-none focus:border-black/30 dark:border-white/10 dark:bg-white/5 dark:text-cream"
+            className="font-rounded w-full resize-none rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-black outline-none focus:border-black/30 dark:border-white/10 dark:bg-white/5 dark:text-cream"
           />
-          <div className="flex items-center gap-3">
-            <label className="font-rounded text-sm font-semibold text-black/60 dark:text-cream/60">
-              Points
-            </label>
-            <input
-              type="number"
-              min={100}
-              step={100}
-              value={points}
-              onChange={(e) => setPoints(Number(e.target.value))}
-              className="font-rounded w-24 rounded-lg border border-black/10 bg-white px-3 py-1.5 text-sm text-black outline-none focus:border-black/30 dark:border-white/10 dark:bg-white/5 dark:text-cream"
-            />
+          <div
+            className="font-rounded flex w-full items-center rounded-full px-4 py-3 text-sm font-bold text-black"
+            style={{ backgroundColor: category.hex }}
+          >
+            {category.name}
+          </div>
+
+          <div className="flex justify-between gap-1.5 pt-1">
+            {POINT_PRESETS.map((p) => (
+              <button
+                key={p}
+                onClick={() => setPoints(p)}
+                className={`font-rounded flex-1 rounded-full py-2 text-xs font-bold transition ${
+                  points === p
+                    ? 'bg-black text-cream'
+                    : 'bg-black/5 text-black/50 hover:bg-black/10 dark:bg-white/10 dark:text-cream/50'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
           </div>
         </div>
 

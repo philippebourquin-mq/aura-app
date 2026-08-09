@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import confetti from 'canvas-confetti'
-import { ChevronRight } from 'lucide-react'
+import { Trophy } from 'lucide-react'
 import { getLevelProgress, levels, TOTAL_POSSIBLE_POINTS, type Level } from '../data/levels'
 import { LevelPathModal } from './LevelPathModal'
 
@@ -9,9 +9,9 @@ interface Props {
   points: number
 }
 
+/** Trophy + points, then a plain dot-track — matches the "status" wireframe. */
 export function AuraGauge({ points }: Props) {
-  const { current, next } = getLevelProgress(points)
-  const pctTotal = Math.min(100, Math.round((points / TOTAL_POSSIBLE_POINTS) * 100))
+  const { current } = getLevelProgress(points)
 
   const prevPointsRef = useRef(points)
   const [celebrate, setCelebrate] = useState<Level | null>(null)
@@ -34,28 +34,20 @@ export function AuraGauge({ points }: Props) {
 
   return (
     <>
-      <button
-        onClick={() => setShowPath(true)}
-        className="group relative block w-full py-2 text-center"
-      >
-        <div className="text-5xl drop-shadow-sm">{current.emoji}</div>
-        <p className="font-display mt-2 text-2xl text-black dark:text-cream">{current.name}</p>
-        <p className="font-rounded text-xs text-black/50 dark:text-cream/50">
-          {points} / {TOTAL_POSSIBLE_POINTS} pts
-          {next ? ` · ${next.minPoints - points} pts avant ${next.name}` : ' · palier maximum atteint'}
+      <button onClick={() => setShowPath(true)} className="block w-full py-2 text-center">
+        <div className="flex items-center justify-center gap-2.5">
+          <Trophy size={28} className="text-black/70 dark:text-cream/70" />
+          <span className="font-display text-4xl text-black dark:text-cream">{points}</span>
+        </div>
+        <p className="font-rounded mt-1 text-sm font-semibold text-black/60 dark:text-cream/60">
+          {current.emoji} {current.name}
         </p>
 
-        <div className="relative mx-2 mt-5 h-2.5 rounded-full bg-black/10 shadow-inner dark:bg-white/10">
-          <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-fuchsia-500 shadow-[0_0_12px_rgba(249,115,22,0.5)]"
-            initial={{ width: 0 }}
-            animate={{ width: `${pctTotal}%` }}
-            transition={{ duration: 0.8, ease: 'easeOut' }}
-          />
-
+        <div className="relative mx-6 mt-5 h-px bg-black/15 dark:bg-white/15">
           {levels.map((level) => {
             const leftPct = (level.minPoints / TOTAL_POSSIBLE_POINTS) * 100
             const reached = points >= level.minPoints
+            const isCurrent = level.name === current.name
             const justReached = celebrate?.name === level.name
             return (
               <div
@@ -64,24 +56,20 @@ export function AuraGauge({ points }: Props) {
                 style={{ left: `${leftPct}%` }}
               >
                 <motion.div
-                  animate={justReached ? { scale: [1, 1.8, 1] } : { scale: 1 }}
+                  animate={justReached ? { scale: [1, 1.9, 1] } : { scale: 1 }}
                   transition={{ duration: 0.7, ease: 'easeOut' }}
-                  className={`flex h-4 w-4 items-center justify-center rounded-full border-2 text-[9px] leading-none ${
-                    reached
-                      ? 'border-black bg-white dark:border-cream dark:bg-neutral-900'
-                      : 'border-black/20 bg-black/10 dark:border-white/20 dark:bg-white/10'
+                  className={`h-2.5 w-2.5 rounded-full ${
+                    isCurrent
+                      ? 'bg-amber-500'
+                      : reached
+                        ? 'bg-black dark:bg-cream'
+                        : 'bg-black/20 dark:bg-white/20'
                   }`}
-                >
-                  {reached ? level.emoji : ''}
-                </motion.div>
+                />
               </div>
             )
           })}
         </div>
-
-        <p className="font-rounded mt-4 inline-flex items-center gap-0.5 text-[11px] font-semibold text-black/40 transition group-hover:text-black/70 dark:text-cream/40 dark:group-hover:text-cream/70">
-          Voir tous les paliers <ChevronRight size={13} />
-        </p>
 
         <AnimatePresence>
           {celebrate && (
