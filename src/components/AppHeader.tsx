@@ -17,10 +17,14 @@ export function AppHeader({ points, role, onRoleChange, wordmark = false }: Prop
   return (
     <header className="sticky top-0 z-10 bg-cream/90 px-5 pt-4 pb-3 backdrop-blur dark:bg-neutral-950/90">
       <div className="flex items-center justify-between">
-        <div className="font-rounded flex items-center gap-1.5 text-sm font-bold text-black dark:text-cream">
+        <Link
+          to="/progression"
+          className="font-rounded flex items-center gap-1.5 text-sm font-bold text-black dark:text-cream"
+          aria-label="Points et profil"
+        >
           <Trophy size={16} className="text-black/70 dark:text-cream/70" />
           {points}
-        </div>
+        </Link>
 
         <div className="flex rounded-full border border-black/10 bg-white/70 p-0.5 text-xs font-semibold dark:border-white/10 dark:bg-white/5">
           <button
