@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Check, ChevronDown, X } from 'lucide-react'
+import { Bell, Check, ChevronDown, X } from 'lucide-react'
 import { ChallengeCard } from './ChallengeCard'
 import { AppHeader } from './AppHeader'
 import { useCountdown } from '../lib/countdown'
@@ -9,11 +9,13 @@ interface Props {
   challenge: Challenge
   origin: RunOrigin
   expiresAt?: string
+  submitted?: boolean
   role: Role
   points: number
   onValidate: () => void
   onDeny: () => void
   onGiveUp: () => void
+  onSubmitForValidation: () => void
   onMinimize: () => void
   onSwitchRole: (role: Role) => void
 }
@@ -28,11 +30,13 @@ export function ChallengeTakeover({
   challenge,
   origin,
   expiresAt,
+  submitted = false,
   role,
   points,
   onValidate,
   onDeny,
   onGiveUp,
+  onSubmitForValidation,
   onMinimize,
   onSwitchRole,
 }: Props) {
@@ -57,7 +61,13 @@ export function ChallengeTakeover({
       <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-6">
         <div className="text-center">
           <p className="font-rounded text-base font-bold text-black dark:text-cream">
-            {role === 'lucas' ? 'Tu as un défi en cours' : 'Lucas a un défi en cours'}
+            {role === 'lucas'
+              ? submitted
+                ? "En attente de validation par ta team"
+                : 'Tu as un défi en cours'
+              : submitted
+                ? 'Lucas a terminé son défi !'
+                : 'Lucas a un défi en cours'}
           </p>
           <p className="font-rounded mt-1 text-sm text-black/50 dark:text-cream/50">
             {expired ? 'Temps écoulé' : `Expire dans ${label}`}
@@ -79,17 +89,36 @@ export function ChallengeTakeover({
           </span>
         )}
 
-        {role === 'lucas' && (
-          <button
-            onClick={onGiveUp}
-            className="font-rounded text-xs font-semibold text-black/40 hover:text-black/60 dark:text-cream/40 dark:hover:text-cream/60"
-          >
-            Abandonner — perd {challenge.points} pts
-          </button>
-        )}
+        {role === 'lucas' &&
+          (submitted ? (
+            <p className="font-rounded max-w-xs text-center text-sm text-black/50 dark:text-cream/50">
+              Ta team a été prévenue — elle valide dès qu'elle regarde. 🎉
+            </p>
+          ) : (
+            <div className="flex flex-col items-center gap-3">
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={onSubmitForValidation}
+                className="font-rounded inline-flex items-center gap-2 rounded-full bg-black px-7 py-3.5 text-base font-bold text-cream shadow-lg"
+              >
+                <Bell size={17} /> J'ai terminé, demander la validation
+              </motion.button>
+              <button
+                onClick={onGiveUp}
+                className="font-rounded text-xs font-semibold text-black/40 hover:text-black/60 dark:text-cream/40 dark:hover:text-cream/60"
+              >
+                Abandonner — perd {challenge.points} pts
+              </button>
+            </div>
+          ))}
 
         {role === 'team' && (
           <div className="flex flex-col items-center gap-3">
+            {submitted && (
+              <span className="font-rounded inline-flex items-center gap-1.5 rounded-full bg-amber-400/25 px-3 py-1 text-xs font-bold text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
+                <Bell size={12} /> Lucas demande une validation
+              </span>
+            )}
             <div className="flex gap-5">
               <motion.button
                 whileTap={{ scale: 0.92 }}

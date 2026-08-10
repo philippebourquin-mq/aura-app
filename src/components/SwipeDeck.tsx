@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion'
 import { ChallengeCard } from './ChallengeCard'
 import type { Challenge } from '../types'
@@ -14,6 +14,9 @@ interface DraggableProps {
 function DraggableCard({ challenge, validated, exitX, onSwipe, onChoose }: DraggableProps) {
   const x = useMotionValue(0)
   const rotate = useTransform(x, [-220, 220], [-14, 14])
+  // A tap that ends a real drag must never also fire the pick action — track actual
+  // movement explicitly rather than relying solely on framer-motion's own tap/drag split.
+  const draggedRef = useRef(false)
 
   return (
     <motion.div
@@ -23,12 +26,18 @@ function DraggableCard({ challenge, validated, exitX, onSwipe, onChoose }: Dragg
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={1}
       dragMomentum={false}
+      onTapStart={() => {
+        draggedRef.current = false
+      }}
+      onDrag={(_, info) => {
+        if (Math.abs(info.offset.x) > 8) draggedRef.current = true
+      }}
       onDragEnd={(_, info) => {
         if (info.offset.x > 100 || info.velocity.x > 400) onSwipe(1)
         else if (info.offset.x < -100 || info.velocity.x < -400) onSwipe(-1)
       }}
       onTap={() => {
-        if (!validated) onChoose()
+        if (!validated && !draggedRef.current) onChoose()
       }}
       initial={{ scale: 0.94, opacity: 0.7, y: 8 }}
       animate={{ scale: 1, opacity: 1, y: 0, x: 0 }}

@@ -131,6 +131,14 @@ export function useGameState() {
     })
   }, [])
 
+  /** Lucas says he's done — flags the run so the team sees it needs checking. Purely informational. */
+  const lucasSubmitForValidation = useCallback(() => {
+    setState((s) => {
+      if (!s.currentRun || s.currentRun.status !== 'active') return s
+      return { ...s, currentRun: { ...s.currentRun, submittedForValidation: true } }
+    })
+  }, [])
+
   /** Switch joker: swap for another card in the same category, stay on 'received'. */
   const lucasSwitchReceived = useCallback(() => {
     setState((s) => {
@@ -276,6 +284,7 @@ export function useGameState() {
     lucasPickChallenge,
     teamSendChallenge,
     lucasAcceptReceived,
+    lucasSubmitForValidation,
     lucasSwitchReceived,
     lucasCloseWithJoker,
     lucasDeclineHard,

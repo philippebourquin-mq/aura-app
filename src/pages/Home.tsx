@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, ChevronUp } from 'lucide-react'
 import { categories, categoryById } from '../data/categories'
 import { challenges, challengesByCategory } from '../data/challenges'
@@ -7,6 +8,7 @@ import { useGameState } from '../state/useGameState'
 import { AppHeader } from '../components/AppHeader'
 import { CelebrationOverlay } from '../components/CelebrationOverlay'
 import { ChallengeTakeover } from '../components/ChallengeTakeover'
+import { ConfirmPickSheet } from '../components/ConfirmPickSheet'
 import { CurrentRun } from '../components/CurrentRun'
 import { LossOverlay } from '../components/LossOverlay'
 import { ChallengePicker } from '../components/ChallengePicker'
@@ -18,8 +20,10 @@ type LossState = { outcome: Exclude<HistoryOutcome, 'validated' | 'joker-out'>; 
 export function Home() {
   const game = useGameState()
   const { state } = game
+  const navigate = useNavigate()
   const [browsing, setBrowsing] = useState<CategoryId | 'all' | null>(null)
   const [takeoverOpen, setTakeoverOpen] = useState(true)
+  const [pendingPick, setPendingPick] = useState<Challenge | null>(null)
   const [celebration, setCelebration] = useState<{ challenge: Challenge; category: Category; amount: number } | null>(
     null,
   )
@@ -29,15 +33,22 @@ export function Home() {
   const allChallenges = [...challenges, ...state.customChallenges]
   const activeChallenge = run ? allChallenges.find((c) => c.id === run.challengeId) : undefined
 
-  // Re-open the takeover whenever a fresh run goes active, even if a previous one was minimized.
+  // Re-open the takeover whenever a fresh run goes active, or Lucas requests validation —
+  // even if a previous one was minimized.
   const prevStatusRef = useRef(run?.status)
+  const prevSubmittedRef = useRef(run?.submittedForValidation)
   useEffect(() => {
     const prevStatus = prevStatusRef.current
+    const prevSubmitted = prevSubmittedRef.current
     prevStatusRef.current = run?.status
+    prevSubmittedRef.current = run?.submittedForValidation
     if (run?.status === 'active' && prevStatus !== 'active') {
       setTakeoverOpen(true)
     }
-  }, [run?.status])
+    if (run?.submittedForValidation && !prevSubmitted) {
+      setTakeoverOpen(true)
+    }
+  }, [run?.status, run?.submittedForValidation])
 
   // Every outcome carries what its overlay needs, so drive both from the journal directly —
   // this also catches auto-expiry, which fires from a background timer, not a button.
@@ -61,9 +72,18 @@ export function Home() {
   const browsingCategory = browsing && browsing !== 'all' ? categoryById(browsing) : null
   const isBrowsing = canPickFreely && browsing !== null
 
+  // Tapping a card (deck or grid tile) only opens a confirmation — nothing commits on a bare tap,
+  // so a stray tap while scrolling or an ambiguous drag can never pick something by accident.
   const handlePick = (challengeId: string) => {
-    if (state.role === 'lucas') game.lucasPickChallenge(challengeId)
-    else game.teamSendChallenge(challengeId)
+    const challenge = allChallenges.find((c) => c.id === challengeId)
+    if (challenge) setPendingPick(challenge)
+  }
+
+  const commitPick = () => {
+    if (!pendingPick) return
+    if (state.role === 'lucas') game.lucasPickChallenge(pendingPick.id)
+    else game.teamSendChallenge(pendingPick.id)
+    setPendingPick(null)
     setBrowsing(null)
   }
 
@@ -75,11 +95,13 @@ export function Home() {
             challenge={activeChallenge}
             origin={run.origin}
             expiresAt={run.expiresAt}
+            submitted={run.submittedForValidation}
             role={state.role}
             points={state.totalPoints}
             onValidate={game.teamValidate}
             onDeny={game.teamDeny}
             onGiveUp={game.lucasGiveUp}
+            onSubmitForValidation={game.lucasSubmitForValidation}
             onMinimize={() => setTakeoverOpen(false)}
             onSwitchRole={game.setRole}
           />
@@ -92,7 +114,20 @@ export function Home() {
             category={celebration.category}
             amount={celebration.amount}
             bonus={celebration.amount > celebration.challenge.points}
-            onContinue={() => setCelebration(null)}
+            onContinue={() => {
+              setCelebration(null)
+              navigate('/progression')
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {pendingPick && (
+          <ConfirmPickSheet
+            challenge={pendingPick}
+            role={state.role}
+            onConfirm={commitPick}
+            onCancel={() => setPendingPick(null)}
           />
         )}
       </AnimatePresence>
@@ -229,17 +264,24 @@ export function Home() {
                             onClick={() => !disabled && handlePick(challenge.id)}
                             disabled={disabled}
                             aria-label={challenge.title}
-                            title={challenge.title}
-                            className={`relative flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border border-black/10 dark:border-white/10 ${
+                            className={`relative flex h-28 w-24 flex-shrink-0 flex-col justify-between rounded-xl border border-black/10 p-2 text-left dark:border-white/10 ${
                               locked && !done ? 'opacity-40' : ''
                             } ${done ? 'grayscale' : 'transition hover:-translate-y-0.5'}`}
                             style={{ backgroundColor: `${category.hex}2E` }}
                           >
-                            {done && (
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black text-cream">
+                            {done ? (
+                              <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black text-cream">
                                 <Check size={11} />
                               </span>
+                            ) : (
+                              <Icon size={14} style={{ color: category.hex }} />
                             )}
+                            <p className="font-rounded line-clamp-3 text-[10px] font-semibold leading-tight text-black/80 dark:text-cream/80">
+                              {challenge.title}
+                            </p>
+                            <span className="font-rounded text-[9px] font-bold text-black/50 dark:text-cream/50">
+                              +{challenge.points}
+                            </span>
                           </button>
                         )
                       })}

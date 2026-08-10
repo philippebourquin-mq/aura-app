@@ -63,6 +63,8 @@ export interface ChallengeRun {
   createdAt: string
   /** Set once the run becomes 'active' — ISO timestamp, 24h out. */
   expiresAt?: string
+  /** Lucas says he's done and is asking the team to check — purely informational, doesn't change status. */
+  submittedForValidation?: boolean
 }
 
 /**

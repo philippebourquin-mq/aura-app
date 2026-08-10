@@ -100,21 +100,29 @@ export function Progress() {
                     {category.name}
                   </span>
                 </div>
-                <div className="-mx-6 flex gap-2.5 overflow-x-auto px-6 pb-1">
+                <div className="relative -mx-6">
+                <div className="flex gap-2.5 overflow-x-auto px-6 pb-1">
                   {list.map((challenge) => {
                     const done = state.validatedChallengeIds.includes(challenge.id)
                     return (
                       <div
                         key={challenge.id}
-                        title={challenge.title}
-                        className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border border-black/10 dark:border-white/10 ${done ? 'grayscale' : ''}`}
+                        className={`relative flex h-28 w-24 flex-shrink-0 flex-col justify-between rounded-xl border border-black/10 p-2 text-left dark:border-white/10 ${done ? 'grayscale' : ''}`}
                         style={{ backgroundColor: `${category.hex}2E` }}
                       >
-                        {done && (
-                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black text-cream">
+                        {done ? (
+                          <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black text-cream">
                             <CheckCircle2 size={11} />
                           </span>
+                        ) : (
+                          <Icon size={14} style={{ color: category.hex }} />
                         )}
+                        <p className="font-rounded line-clamp-3 text-[10px] font-semibold leading-tight text-black/80 dark:text-cream/80">
+                          {challenge.title}
+                        </p>
+                        <span className="font-rounded text-[9px] font-bold text-black/50 dark:text-cream/50">
+                          +{challenge.points}
+                        </span>
                       </div>
                     )
                   })}
@@ -122,11 +130,14 @@ export function Progress() {
                     <button
                       onClick={() => setCreatingFor(category.id)}
                       aria-label={`Créer un défi dans ${category.name}`}
-                      className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl border-2 border-dashed border-black/20 text-black/30 transition hover:border-black/40 hover:text-black/50 dark:border-white/20 dark:text-cream/30 dark:hover:border-white/40 dark:hover:text-cream/50"
+                      className="flex h-28 w-24 flex-shrink-0 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-black/20 text-black/30 transition hover:border-black/40 hover:text-black/50 dark:border-white/20 dark:text-cream/30 dark:hover:border-white/40 dark:hover:text-cream/50"
                     >
                       <Plus size={18} />
+                      <span className="font-rounded text-[9px] font-bold">Créer</span>
                     </button>
                   )}
+                </div>
+                <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-cream to-transparent dark:from-neutral-950" />
                 </div>
               </div>
             )

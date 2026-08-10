@@ -81,7 +81,7 @@ export function CelebrationOverlay({ challenge, category, amount, bonus, onConti
         onClick={onContinue}
         className="font-rounded mt-4 rounded-full bg-black px-8 py-3 text-sm font-bold text-cream"
       >
-        Continuer
+        Voir mon profil →
       </motion.button>
     </motion.div>
   )
