@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, ChevronUp } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronUp } from 'lucide-react'
 import { categories, categoryById } from '../data/categories'
 import { challenges, challengesByCategory } from '../data/challenges'
 import { useGameState } from '../state/useGameState'
 import { AppHeader } from '../components/AppHeader'
 import { CelebrationOverlay } from '../components/CelebrationOverlay'
 import { ChallengeTakeover } from '../components/ChallengeTakeover'
+import { ChallengeTile } from '../components/ChallengeTile'
 import { ConfirmPickSheet } from '../components/ConfirmPickSheet'
 import { CurrentRun } from '../components/CurrentRun'
 import { LossOverlay } from '../components/LossOverlay'
@@ -257,32 +258,14 @@ export function Home() {
                     <div className="flex gap-2.5 overflow-x-auto px-5 pb-1">
                       {list.map((challenge) => {
                         const done = state.validatedChallengeIds.includes(challenge.id)
-                        const disabled = locked || done
                         return (
-                          <button
+                          <ChallengeTile
                             key={challenge.id}
-                            onClick={() => !disabled && handlePick(challenge.id)}
-                            disabled={disabled}
-                            aria-label={challenge.title}
-                            className={`relative flex h-28 w-24 flex-shrink-0 flex-col justify-between rounded-xl border border-black/10 p-2 text-left dark:border-white/10 ${
-                              locked && !done ? 'opacity-40' : ''
-                            } ${done ? 'grayscale' : 'transition hover:-translate-y-0.5'}`}
-                            style={{ backgroundColor: `${category.hex}2E` }}
-                          >
-                            {done ? (
-                              <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black text-cream">
-                                <Check size={11} />
-                              </span>
-                            ) : (
-                              <Icon size={14} style={{ color: category.hex }} />
-                            )}
-                            <p className="font-rounded line-clamp-3 text-[10px] font-semibold leading-tight text-black/80 dark:text-cream/80">
-                              {challenge.title}
-                            </p>
-                            <span className="font-rounded text-[9px] font-bold text-black/50 dark:text-cream/50">
-                              +{challenge.points}
-                            </span>
-                          </button>
+                            challenge={challenge}
+                            done={done}
+                            locked={locked}
+                            onClick={() => handlePick(challenge.id)}
+                          />
                         )
                       })}
                     </div>

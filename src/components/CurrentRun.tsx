@@ -1,10 +1,12 @@
-import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Hourglass, Moon, Repeat2, Shuffle, X, type LucideIcon } from 'lucide-react'
-import { categoryById, jokers } from '../data/categories'
+import { JOKER_HEX, categoryById, jokers } from '../data/categories'
 import { challenges } from '../data/challenges'
 import { ChallengeCard } from './ChallengeCard'
+import { JokerPlayOverlay } from './JokerPlayOverlay'
 import type { useGameState } from '../state/useGameState'
-import type { JokerId } from '../types'
+import type { JokerDef, JokerId } from '../types'
 
 type Game = ReturnType<typeof useGameState>
 
@@ -23,6 +25,7 @@ const jokerIcons: Record<JokerId, LucideIcon> = {
 export function CurrentRun({ game }: { game: Game }) {
   const { state } = game
   const run = state.currentRun
+  const [playingJoker, setPlayingJoker] = useState<JokerDef | null>(null)
 
   const allChallenges = [...challenges, ...state.customChallenges]
   const challenge = run ? allChallenges.find((c) => c.id === run.challengeId) : undefined
@@ -77,15 +80,16 @@ export function CurrentRun({ game }: { game: Game }) {
             <motion.button
               key={j.id}
               whileTap={{ scale: 0.92 }}
-              onClick={() => {
-                if (j.id === 'switch') game.lucasSwitchReceived()
-                else game.lucasCloseWithJoker(j.id as 'boomerang' | 'flemme')
-              }}
+              onClick={() => setPlayingJoker(j)}
               aria-label={j.name}
               title={j.effect}
-              className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-black/15 text-black/60 dark:border-white/15 dark:text-cream/60"
+              className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-2xl border-2"
+              style={{ borderColor: JOKER_HEX, backgroundColor: `${JOKER_HEX}26` }}
             >
-              <Icon size={18} />
+              <Icon size={16} style={{ color: JOKER_HEX }} />
+              <span className="font-rounded text-[8px] font-bold" style={{ color: JOKER_HEX }}>
+                {j.name}
+              </span>
             </motion.button>
           )
         })}
@@ -104,6 +108,21 @@ export function CurrentRun({ game }: { game: Game }) {
       <p className="font-rounded text-center text-[11px] text-black/40 dark:text-cream/40">
         Jokers gratuits, une fois chacun · refuser perd {challenge.points} pts
       </p>
+
+      <AnimatePresence>
+        {playingJoker && (
+          <JokerPlayOverlay
+            name={playingJoker.name}
+            effect={playingJoker.effect}
+            Icon={jokerIcons[playingJoker.id as JokerId]}
+            onDone={() => {
+              if (playingJoker.id === 'switch') game.lucasSwitchReceived()
+              else game.lucasCloseWithJoker(playingJoker.id as 'boomerang' | 'flemme')
+              setPlayingJoker(null)
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

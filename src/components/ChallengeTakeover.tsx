@@ -41,6 +41,9 @@ export function ChallengeTakeover({
   onSwitchRole,
 }: Props) {
   const { label, expired } = useCountdown(expiresAt)
+  // Lucas has an action to take whenever he hasn't submitted yet; the team has one
+  // whenever Lucas's run is running at all. Everyone else is just looking.
+  const hasFloatingActions = role === 'lucas' ? !submitted : true
 
   return (
     <motion.div
@@ -48,7 +51,7 @@ export function ChallengeTakeover({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-40 flex flex-col overflow-y-auto bg-cream dark:bg-neutral-950"
+      className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-cream dark:bg-neutral-950"
     >
       <AppHeader points={points} role={role} onRoleChange={onSwitchRole} />
       <button
@@ -58,7 +61,11 @@ export function ChallengeTakeover({
         <ChevronDown size={14} /> Réduire
       </button>
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-6">
+      <div
+        className={`flex flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-6 py-6 ${
+          hasFloatingActions ? 'pb-40' : 'pb-10'
+        }`}
+      >
         <div className="text-center">
           <p className="font-rounded text-base font-bold text-black dark:text-cream">
             {role === 'lucas'
@@ -89,13 +96,20 @@ export function ChallengeTakeover({
           </span>
         )}
 
-        {role === 'lucas' &&
-          (submitted ? (
-            <p className="font-rounded max-w-xs text-center text-sm text-black/50 dark:text-cream/50">
-              Ta team a été prévenue — elle valide dès qu'elle regarde. 🎉
-            </p>
-          ) : (
-            <div className="flex flex-col items-center gap-3">
+        {role === 'lucas' && submitted && (
+          <p className="font-rounded max-w-xs text-center text-sm text-black/50 dark:text-cream/50">
+            Ta team a été prévenue — elle valide dès qu'elle regarde. 🎉
+          </p>
+        )}
+      </div>
+
+      {/* Action buttons stay pinned above the card as a foreground bar, never pushed
+          off-screen by scroll — the whole point of "Refuser"/"Valider" is that they're
+          always reachable, so they float over the content instead of living inside it. */}
+      {hasFloatingActions && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex flex-col items-center gap-3 bg-gradient-to-t from-cream via-cream/95 to-transparent px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-10 dark:from-neutral-950 dark:via-neutral-950/95">
+          {role === 'lucas' && (
+            <div className="pointer-events-auto flex flex-col items-center gap-3">
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={onSubmitForValidation}
@@ -110,39 +124,40 @@ export function ChallengeTakeover({
                 Abandonner — perd {challenge.points} pts
               </button>
             </div>
-          ))}
+          )}
 
-        {role === 'team' && (
-          <div className="flex flex-col items-center gap-3">
-            {submitted && (
-              <span className="font-rounded inline-flex items-center gap-1.5 rounded-full bg-amber-400/25 px-3 py-1 text-xs font-bold text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
-                <Bell size={12} /> Lucas demande une validation
-              </span>
-            )}
-            <div className="flex gap-5">
-              <motion.button
-                whileTap={{ scale: 0.92 }}
-                onClick={onValidate}
-                aria-label="Valider le défi"
-                className="flex h-16 w-16 items-center justify-center rounded-full bg-black text-cream shadow-lg"
-              >
-                <Check size={26} />
-              </motion.button>
-              <motion.button
-                whileTap={{ scale: 0.92 }}
-                onClick={onDeny}
-                aria-label="Refuser le défi"
-                className="flex h-16 w-16 items-center justify-center rounded-full bg-black text-cream shadow-lg"
-              >
-                <X size={26} />
-              </motion.button>
+          {role === 'team' && (
+            <div className="pointer-events-auto flex flex-col items-center gap-3">
+              {submitted && (
+                <span className="font-rounded inline-flex items-center gap-1.5 rounded-full bg-amber-400/25 px-3 py-1 text-xs font-bold text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
+                  <Bell size={12} /> Lucas demande une validation
+                </span>
+              )}
+              <div className="flex gap-5">
+                <motion.button
+                  whileTap={{ scale: 0.92 }}
+                  onClick={onValidate}
+                  aria-label="Valider le défi"
+                  className="flex h-16 w-16 items-center justify-center rounded-full bg-black text-cream shadow-lg"
+                >
+                  <Check size={26} />
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.92 }}
+                  onClick={onDeny}
+                  aria-label="Refuser le défi"
+                  className="flex h-16 w-16 items-center justify-center rounded-full bg-black text-cream shadow-lg"
+                >
+                  <X size={26} />
+                </motion.button>
+              </div>
+              <p className="font-rounded text-xs text-black/40 dark:text-cream/40">
+                Refuser fait perdre {challenge.points} pts à Lucas
+              </p>
             </div>
-            <p className="font-rounded text-xs text-black/40 dark:text-cream/40">
-              Refuser fait perdre {challenge.points} pts à Lucas
-            </p>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </motion.div>
   )
 }

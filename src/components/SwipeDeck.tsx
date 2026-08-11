@@ -69,9 +69,10 @@ export function SwipeDeck({ pool, validatedChallengeIds, index, onIndexChange, o
   const behind1 = pool[index + 1]
   const behind2 = pool[index + 2]
 
+  // Wraps around at both ends — the deck is a loop, like flipping through the physical stack.
   const handleSwipe = (direction: 1 | -1) => {
-    const target = index + direction
-    if (target < 0 || target >= pool.length) return
+    if (pool.length === 0) return
+    const target = (index + direction + pool.length) % pool.length
     setExitX(direction * 420)
     onIndexChange(target)
   }

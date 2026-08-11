@@ -48,6 +48,9 @@ export const categories: Category[] = [
 export const categoryById = (id: string) =>
   categories.find((c) => c.id === id)
 
+/** The physical joker cards' signature blue-grey — distinct from every category color. */
+export const JOKER_HEX = '#8CACB6'
+
 export const jokers: JokerDef[] = [
   {
     id: 'switch',

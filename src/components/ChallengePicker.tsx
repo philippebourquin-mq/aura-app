@@ -73,9 +73,8 @@ export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, custo
 
           <div className="mt-4 flex items-center justify-center gap-4">
             <button
-              onClick={() => setIndex((i) => Math.max(0, i - 1))}
-              disabled={index === 0}
-              className="rounded-full border border-black/10 p-2 text-black/50 transition hover:bg-black/5 disabled:opacity-30 dark:border-white/10 dark:text-cream/50 dark:hover:bg-white/10"
+              onClick={() => setIndex((i) => (i - 1 + pool.length) % pool.length)}
+              className="rounded-full border border-black/10 p-2 text-black/50 transition hover:bg-black/5 dark:border-white/10 dark:text-cream/50 dark:hover:bg-white/10"
               aria-label="Carte précédente"
             >
               <ChevronLeft size={16} />
@@ -84,9 +83,8 @@ export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, custo
               {index + 1} / {pool.length}
             </span>
             <button
-              onClick={() => setIndex((i) => Math.min(pool.length - 1, i + 1))}
-              disabled={index === pool.length - 1}
-              className="rounded-full border border-black/10 p-2 text-black/50 transition hover:bg-black/5 disabled:opacity-30 dark:border-white/10 dark:text-cream/50 dark:hover:bg-white/10"
+              onClick={() => setIndex((i) => (i + 1) % pool.length)}
+              className="rounded-full border border-black/10 p-2 text-black/50 transition hover:bg-black/5 dark:border-white/10 dark:text-cream/50 dark:hover:bg-white/10"
               aria-label="Carte suivante"
             >
               <ChevronRight size={16} />

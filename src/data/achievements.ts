@@ -1,12 +1,16 @@
+import { Rocket, Star, Trophy, Waves, type LucideIcon } from 'lucide-react'
 import { categories } from './categories'
 import { challenges, challengesByCategory } from './challenges'
+import { categoryIcons } from '../lib/categoryIcons'
 import type { GameState } from '../state/useGameState'
 
 export interface Achievement {
   id: string
   name: string
   description: string
-  emoji: string
+  icon: LucideIcon
+  /** Category color for category-specific badges — generic badges default to solid black. */
+  hex?: string
   isUnlocked: (state: GameState) => boolean
 }
 
@@ -20,14 +24,15 @@ export const achievements: Achievement[] = [
     id: 'first-step',
     name: 'Premier pas',
     description: 'Valide ton premier défi.',
-    emoji: '🚀',
+    icon: Rocket,
     isUnlocked: (state) => validatedCount(state) >= 1,
   },
   ...categories.map((category) => ({
     id: `category-complete-${category.id}`,
     name: `Maître ${category.name}`,
     description: `Valide tous les défis de la catégorie « ${category.name} ».`,
-    emoji: '🏅',
+    icon: categoryIcons[category.id],
+    hex: category.hex,
     isUnlocked: (state: GameState) => {
       const total = challengesByCategory(category.id).length
       return total > 0 && validatedCount(state, category.id) === total
@@ -37,21 +42,21 @@ export const achievements: Achievement[] = [
     id: 'halfway',
     name: 'Mi-parcours',
     description: 'Valide la moitié des défis du jeu.',
-    emoji: '⭐',
+    icon: Star,
     isUnlocked: (state) => validatedCount(state) >= Math.ceil(challenges.length / 2),
   },
   {
     id: 'full-aura',
     name: "Pleine Aura",
     description: 'Valide tous les défis du jeu.',
-    emoji: '👑',
+    icon: Trophy,
     isUnlocked: (state) => validatedCount(state) === challenges.length,
   },
   {
     id: 'perseverant',
     name: 'Persévérant',
     description: "Tente 5 défis — validés ou non, l'important c'est d'essayer.",
-    emoji: '🌊',
+    icon: Waves,
     isUnlocked: (state) => state.history.length >= 5,
   },
 ]

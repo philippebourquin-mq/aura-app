@@ -7,6 +7,7 @@ import { challenges, challengesByCategory } from '../data/challenges'
 import { useGameState } from '../state/useGameState'
 import { AppHeader } from '../components/AppHeader'
 import { AuraGauge } from '../components/AuraGauge'
+import { ChallengeTile } from '../components/ChallengeTile'
 import { NewChallengeForm } from '../components/NewChallengeForm'
 import { achievements } from '../data/achievements'
 import { categoryIcons } from '../lib/categoryIcons'
@@ -53,6 +54,7 @@ export function Progress() {
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
             {achievements.map((a, i) => {
               const unlocked = a.isUnlocked(state)
+              const Icon = a.icon
               return (
                 <motion.div
                   key={a.id}
@@ -60,14 +62,23 @@ export function Progress() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.03 }}
                   title={a.description}
-                  className={`flex flex-col items-center gap-1 rounded-2xl border p-3 text-center ${
+                  className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-center ${
                     unlocked
                       ? 'border-black/10 bg-white dark:border-white/10 dark:bg-white/10'
                       : 'border-black/5 bg-black/5 dark:border-white/5 dark:bg-white/5'
                   }`}
                 >
-                  <span className={`text-2xl ${unlocked ? '' : 'opacity-20 grayscale'}`}>
-                    {unlocked ? a.emoji : <Lock size={20} className="mx-auto text-black/30 dark:text-cream/30" />}
+                  <span
+                    className={`flex h-9 w-9 items-center justify-center rounded-full ${
+                      unlocked ? '' : 'bg-black/5 dark:bg-white/10'
+                    }`}
+                    style={unlocked ? { backgroundColor: a.hex ?? '#111111' } : undefined}
+                  >
+                    {unlocked ? (
+                      <Icon size={16} className={a.hex ? 'text-black/75' : 'text-cream'} />
+                    ) : (
+                      <Lock size={16} className="text-black/30 dark:text-cream/30" />
+                    )}
                   </span>
                   <span
                     className={`font-rounded text-[11px] font-semibold leading-tight ${
@@ -104,27 +115,7 @@ export function Progress() {
                 <div className="flex gap-2.5 overflow-x-auto px-6 pb-1">
                   {list.map((challenge) => {
                     const done = state.validatedChallengeIds.includes(challenge.id)
-                    return (
-                      <div
-                        key={challenge.id}
-                        className={`relative flex h-28 w-24 flex-shrink-0 flex-col justify-between rounded-xl border border-black/10 p-2 text-left dark:border-white/10 ${done ? 'grayscale' : ''}`}
-                        style={{ backgroundColor: `${category.hex}2E` }}
-                      >
-                        {done ? (
-                          <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-black text-cream">
-                            <CheckCircle2 size={11} />
-                          </span>
-                        ) : (
-                          <Icon size={14} style={{ color: category.hex }} />
-                        )}
-                        <p className="font-rounded line-clamp-3 text-[10px] font-semibold leading-tight text-black/80 dark:text-cream/80">
-                          {challenge.title}
-                        </p>
-                        <span className="font-rounded text-[9px] font-bold text-black/50 dark:text-cream/50">
-                          +{challenge.points}
-                        </span>
-                      </div>
-                    )
+                    return <ChallengeTile key={challenge.id} challenge={challenge} done={done} />
                   })}
                   {state.role === 'team' && (
                     <button
