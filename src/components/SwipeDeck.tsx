@@ -108,7 +108,12 @@ export function SwipeDeck({ pool, validatedChallengeIds, index, onIndexChange, o
           <ChallengeCard challenge={behind1} validated={validatedChallengeIds.includes(behind1.id)} />
         </div>
       )}
-      <AnimatePresence initial={false}>
+      {/* mode="wait" forces each card's exit to finish before the next one mounts. Without it,
+          index changes faster than the ~0.32s exit duration (an entirely normal swiping pace)
+          leave old cards stuck in the DOM instead of being removed, and a real touch/drag can
+          land on one of those dead leftovers instead of the live top card — silently swallowing
+          the gesture, which reads as the deck "getting stuck". */}
+      <AnimatePresence initial={false} mode="wait">
         {current && (
           <DraggableCard
             key={current.id}
