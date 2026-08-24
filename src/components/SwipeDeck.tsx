@@ -11,12 +11,24 @@ interface DraggableProps {
   exitX: number
   onSwipe: (direction: 1 | -1) => void
   onChoose: () => void
+  /** A validated card can't be picked again — tapping it opens its read-only detail instead. */
+  onViewDetail: () => void
   /** Play a one-shot wiggle to teach the drag gesture — only the very first card of a session. */
   hint: boolean
   onHintPlayed: () => void
 }
 
-function DraggableCard({ challenge, validated, locked, exitX, onSwipe, onChoose, hint, onHintPlayed }: DraggableProps) {
+function DraggableCard({
+  challenge,
+  validated,
+  locked,
+  exitX,
+  onSwipe,
+  onChoose,
+  onViewDetail,
+  hint,
+  onHintPlayed,
+}: DraggableProps) {
   const x = useMotionValue(0)
   const rotate = useTransform(x, [-220, 220], [-14, 14])
   // A tap that ends a real drag must never also fire the pick action — track actual
@@ -53,7 +65,9 @@ function DraggableCard({ challenge, validated, locked, exitX, onSwipe, onChoose,
         else if (info.offset.x < -100 || info.velocity.x < -400) onSwipe(-1)
       }}
       onTap={() => {
-        if (!validated && !locked && !draggedRef.current) onChoose()
+        if (draggedRef.current) return
+        if (validated) onViewDetail()
+        else if (!locked) onChoose()
       }}
       initial={{ scale: 0.96, opacity: 0.85, y: 4 }}
       animate={{ scale: 1, opacity: 1, y: 0, x: 0 }}
@@ -75,12 +89,22 @@ interface Props {
   index: number
   onIndexChange: (index: number) => void
   onPick: (challengeId: string) => void
+  /** Opens the read-only detail sheet for an already-validated card. */
+  onViewDetail: (challengeId: string) => void
   /** A run is already in progress — browsing still works, but tapping can't pick a new one. */
   locked?: boolean
 }
 
 /** A Tinder-style stacked deck: drag the top card away to browse, tap it to choose it. */
-export function SwipeDeck({ pool, validatedChallengeIds, index, onIndexChange, onPick, locked = false }: Props) {
+export function SwipeDeck({
+  pool,
+  validatedChallengeIds,
+  index,
+  onIndexChange,
+  onPick,
+  onViewDetail,
+  locked = false,
+}: Props) {
   const [exitX, setExitX] = useState(0)
   const hasHintedRef = useRef(false)
 
@@ -144,6 +168,7 @@ export function SwipeDeck({ pool, validatedChallengeIds, index, onIndexChange, o
               handleSwipe(direction)
             }}
             onChoose={() => onPick(current.id)}
+            onViewDetail={() => onViewDetail(current.id)}
             hint={!hasHintedRef.current}
             onHintPlayed={() => {
               hasHintedRef.current = true

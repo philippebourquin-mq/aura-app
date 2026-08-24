@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AppHeader } from '../components/AppHeader'
+import { ChallengeDetailSheet } from '../components/ChallengeDetailSheet'
 import { ChallengePicker } from '../components/ChallengePicker'
 import { ConfirmPickSheet } from '../components/ConfirmPickSheet'
 import { challenges } from '../data/challenges'
@@ -23,6 +24,7 @@ interface Props {
 export function Home({ game, openTakeover }: Props) {
   const { state } = game
   const [pendingPick, setPendingPick] = useState<Challenge | null>(null)
+  const [viewingChallenge, setViewingChallenge] = useState<Challenge | null>(null)
 
   const run = state.currentRun
   const allChallenges = [...challenges, ...state.customChallenges]
@@ -34,6 +36,11 @@ export function Home({ game, openTakeover }: Props) {
   const handlePick = (challengeId: string) => {
     const challenge = allChallenges.find((c) => c.id === challengeId)
     if (challenge) setPendingPick(challenge)
+  }
+
+  const handleViewDetail = (challengeId: string) => {
+    const challenge = allChallenges.find((c) => c.id === challengeId)
+    if (challenge) setViewingChallenge(challenge)
   }
 
   const commitPick = () => {
@@ -71,6 +78,7 @@ export function Home({ game, openTakeover }: Props) {
           validatedChallengeIds={state.validatedChallengeIds}
           customChallenges={state.customChallenges}
           onPick={handlePick}
+          onViewDetail={handleViewDetail}
           locked={locked}
         />
       </motion.div>
@@ -82,6 +90,18 @@ export function Home({ game, openTakeover }: Props) {
             role={state.role}
             onConfirm={commitPick}
             onCancel={() => setPendingPick(null)}
+          />
+        )}
+        {viewingChallenge && (
+          <ChallengeDetailSheet
+            challenge={viewingChallenge}
+            done
+            canRequeue={state.role === 'team'}
+            onRequeue={() => {
+              game.requeueChallenge(viewingChallenge.id)
+              setViewingChallenge(null)
+            }}
+            onClose={() => setViewingChallenge(null)}
           />
         )}
       </AnimatePresence>
