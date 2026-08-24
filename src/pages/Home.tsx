@@ -11,10 +11,19 @@ import { ChallengePicker } from '../components/ChallengePicker'
 import { ChallengeTakeover } from '../components/ChallengeTakeover'
 import { ConfirmPickSheet } from '../components/ConfirmPickSheet'
 import { CurrentRun } from '../components/CurrentRun'
+import { JokerConfirmSheet } from '../components/JokerConfirmSheet'
+import { JokerOutcomeOverlay } from '../components/JokerOutcomeOverlay'
+import { JokerPlayOverlay } from '../components/JokerPlayOverlay'
 import { LossOverlay } from '../components/LossOverlay'
-import type { Category, Challenge, HistoryOutcome } from '../types'
+import { jokerIcons, jokerOutcomeCopy } from '../lib/jokerIcons'
+import type { Category, Challenge, HistoryOutcome, JokerDef, JokerId } from '../types'
 
 type LossState = { outcome: Exclude<HistoryOutcome, 'validated' | 'joker-out'>; title: string; pointsLost: number }
+
+/** Playing a joker is single-use and final, so it gets a real beginning, middle, and end —
+ * this lives on Home (not CurrentRun) because closing the run mid-flow would otherwise
+ * unmount the outcome screen before the user ever sees it. */
+type JokerStep = 'confirm' | 'playing' | 'outcome'
 
 /**
  * Home IS the "choisis un défi" screen — the deck is the first thing either
@@ -31,6 +40,7 @@ export function Home() {
     null,
   )
   const [loss, setLoss] = useState<LossState | null>(null)
+  const [jokerFlow, setJokerFlow] = useState<{ joker: JokerDef; step: JokerStep } | null>(null)
 
   const run = state.currentRun
   const allChallenges = [...challenges, ...state.customChallenges]
@@ -61,7 +71,7 @@ export function Home() {
     if (!latest || latest.id === lastHistoryIdRef.current) return
     lastHistoryIdRef.current = latest.id
     const c = allChallenges.find((ch) => ch.id === latest.challengeId)
-    if (latest.outcome === 'joker-out') return // free and quiet, by design
+    if (latest.outcome === 'joker-out') return // has its own JokerOutcomeOverlay, driven by jokerFlow instead
     if (latest.outcome === 'validated') {
       const cat = categoryById(latest.categoryId)
       if (c && cat) setCelebration({ challenge: c, category: cat, amount: latest.pointsDelta })
@@ -141,6 +151,42 @@ export function Home() {
           />
         )}
       </AnimatePresence>
+      <AnimatePresence>
+        {jokerFlow?.step === 'confirm' && (
+          <JokerConfirmSheet
+            name={jokerFlow.joker.name}
+            effect={jokerFlow.joker.effect}
+            Icon={jokerIcons[jokerFlow.joker.id as JokerId]}
+            onCancel={() => setJokerFlow(null)}
+            onConfirm={() => setJokerFlow({ joker: jokerFlow.joker, step: 'playing' })}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {jokerFlow?.step === 'playing' && (
+          <JokerPlayOverlay
+            name={jokerFlow.joker.name}
+            effect={jokerFlow.joker.effect}
+            Icon={jokerIcons[jokerFlow.joker.id as JokerId]}
+            onDone={() => {
+              const jokerId = jokerFlow.joker.id as JokerId
+              if (jokerId === 'switch') game.lucasSwitchReceived()
+              else game.lucasCloseWithJoker(jokerId as 'boomerang' | 'flemme')
+              setJokerFlow({ joker: jokerFlow.joker, step: 'outcome' })
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {jokerFlow?.step === 'outcome' && (
+          <JokerOutcomeOverlay
+            title={jokerOutcomeCopy[jokerFlow.joker.id as JokerId].title}
+            blurb={jokerOutcomeCopy[jokerFlow.joker.id as JokerId].blurb}
+            Icon={jokerIcons[jokerFlow.joker.id as JokerId]}
+            onContinue={() => setJokerFlow(null)}
+          />
+        )}
+      </AnimatePresence>
     </>
   )
 
@@ -172,7 +218,7 @@ export function Home() {
                   </motion.button>
                 )
               ) : (
-                <CurrentRun game={game} />
+                <CurrentRun game={game} onPlayJoker={(joker) => setJokerFlow({ joker, step: 'confirm' })} />
               )}
             </motion.div>
           ) : (
@@ -183,7 +229,7 @@ export function Home() {
               exit={{ opacity: 0, x: 24 }}
               transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             >
-              <h1 className="font-display mb-5 mt-1 text-[2.1rem] leading-[1.05] text-black dark:text-cream">
+              <h1 className="font-display mb-10 mt-2 text-[2.1rem] leading-[1.05] text-black dark:text-cream">
                 {state.role === 'lucas' ? 'Choisis ton prochain défi' : 'Choisis un défi pour Lucas'}
               </h1>
 

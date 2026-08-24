@@ -59,7 +59,7 @@ export function Progress() {
           <AuraGauge points={state.totalPoints} />
         </div>
 
-        <div className="mt-8">
+        <div className="mt-10">
           <h2 className="font-rounded mb-3 text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-cream/60">
             Badges
           </h2>
@@ -105,7 +105,7 @@ export function Progress() {
           </div>
         </div>
 
-        <div className="mt-8 space-y-5">
+        <div className="mt-10 space-y-6">
           <h2 className="font-rounded text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-cream/60">
             Défis
           </h2>
@@ -155,7 +155,7 @@ export function Progress() {
         </div>
 
         {state.history.length > 0 && (
-          <div className="mt-8">
+          <div className="mt-10">
             <h2 className="font-rounded mb-3 text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-cream/60">
               Journal
             </h2>

@@ -31,18 +31,21 @@ export function ChallengePicker({ validatedChallengeIds, customChallenges = [], 
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap justify-center gap-3">
+      <p className="font-rounded mb-3 text-center text-[11px] font-bold uppercase tracking-[0.15em] text-black/35 dark:text-cream/35">
+        Filtrer par catégorie
+      </p>
+      <div className="mb-10 flex flex-wrap justify-center gap-3.5">
         <motion.button
           whileTap={{ scale: 0.85 }}
           onClick={() => setFilter('all')}
           aria-label="Toutes les catégories"
           title="Toutes"
-          className="relative h-6 w-6 flex-shrink-0 rounded-full bg-black"
+          className="relative h-7 w-7 flex-shrink-0 rounded-full bg-black ring-1 ring-black/10 dark:ring-white/20"
         >
           {filter === 'all' && (
             <motion.span
               layoutId="category-filter-ring"
-              className="absolute -inset-1 rounded-full border-2 border-black dark:border-cream"
+              className="absolute -inset-1.5 rounded-full border-2 border-black dark:border-cream"
               transition={{ type: 'spring', stiffness: 500, damping: 32 }}
             />
           )}
@@ -54,13 +57,13 @@ export function ChallengePicker({ validatedChallengeIds, customChallenges = [], 
             onClick={() => setFilter(c.id)}
             aria-label={c.name}
             title={c.name}
-            className="relative h-6 w-6 flex-shrink-0 rounded-full"
+            className="relative h-7 w-7 flex-shrink-0 rounded-full ring-1 ring-black/10 dark:ring-white/20"
             style={{ backgroundColor: c.hex }}
           >
             {filter === c.id && (
               <motion.span
                 layoutId="category-filter-ring"
-                className="absolute -inset-1 rounded-full border-2 border-black dark:border-cream"
+                className="absolute -inset-1.5 rounded-full border-2 border-black dark:border-cream"
                 transition={{ type: 'spring', stiffness: 500, damping: 32 }}
               />
             )}
@@ -82,7 +85,7 @@ export function ChallengePicker({ validatedChallengeIds, customChallenges = [], 
             onPick={onPick}
           />
 
-          <div className="mt-4 flex items-center justify-center gap-4">
+          <div className="mt-6 flex items-center justify-center gap-4">
             <button
               onClick={() => setIndex((i) => (i - 1 + pool.length) % pool.length)}
               className="rounded-full border border-black/10 p-2 text-black/50 transition hover:bg-black/5 dark:border-white/10 dark:text-cream/50 dark:hover:bg-white/10"
@@ -102,7 +105,7 @@ export function ChallengePicker({ validatedChallengeIds, customChallenges = [], 
             </button>
           </div>
 
-          <p className="font-rounded mt-3 text-center text-xs text-black/40 dark:text-cream/40">
+          <p className="font-rounded mt-4 text-center text-xs text-black/40 dark:text-cream/40">
             {currentIsValidated ? 'Déjà validé — glisse pour voir la suite' : 'Tape la carte pour la choisir'}
           </p>
         </>

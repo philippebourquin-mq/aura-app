@@ -1,21 +1,14 @@
-import { useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { Hourglass, Moon, Repeat2, Shuffle, X, type LucideIcon } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Hourglass, X } from 'lucide-react'
 import { categoryById, jokers } from '../data/categories'
 import { challenges } from '../data/challenges'
 import { ChallengeCard } from './ChallengeCard'
-import { JokerPlayOverlay } from './JokerPlayOverlay'
 import { JokerTile } from './JokerTile'
+import { jokerIcons } from '../lib/jokerIcons'
 import type { useGameState } from '../state/useGameState'
 import type { JokerDef, JokerId } from '../types'
 
 type Game = ReturnType<typeof useGameState>
-
-const jokerIcons: Record<JokerId, LucideIcon> = {
-  switch: Shuffle,
-  boomerang: Repeat2,
-  flemme: Moon,
-}
 
 /**
  * Everything up to the moment Lucas commits: idle, and the 'received' decision
@@ -23,10 +16,9 @@ const jokerIcons: Record<JokerId, LucideIcon> = {
  * with its Accepter / Joker / Refuser row. 'active' is a full-screen takeover
  * owned by Home instead.
  */
-export function CurrentRun({ game }: { game: Game }) {
+export function CurrentRun({ game, onPlayJoker }: { game: Game; onPlayJoker: (joker: JokerDef) => void }) {
   const { state } = game
   const run = state.currentRun
-  const [playingJoker, setPlayingJoker] = useState<JokerDef | null>(null)
 
   const allChallenges = [...challenges, ...state.customChallenges]
   const challenge = run ? allChallenges.find((c) => c.id === run.challengeId) : undefined
@@ -50,7 +42,7 @@ export function CurrentRun({ game }: { game: Game }) {
   const availableJokers = jokers.filter((j) => !state.jokersUsed.includes(j.id as JokerId))
 
   return (
-    <div className="flex flex-col items-center gap-5">
+    <div className="flex flex-col items-center gap-6">
       <motion.div
         key={challenge.id}
         initial={{ rotateY: -110, opacity: 0, scale: 0.9 }}
@@ -90,8 +82,8 @@ export function CurrentRun({ game }: { game: Game }) {
       </p>
 
       {availableJokers.length > 0 && (
-        <div className="w-full">
-          <p className="font-rounded mb-2 text-center text-[11px] font-bold uppercase tracking-[0.15em] text-black/30 dark:text-cream/30">
+        <div className="mt-1 w-full">
+          <p className="font-rounded mb-3 text-center text-[11px] font-bold uppercase tracking-[0.15em] text-black/30 dark:text-cream/30">
             Tes jokers — gratuits, une fois chacun
           </p>
           <div className="flex justify-center gap-2.5">
@@ -101,27 +93,12 @@ export function CurrentRun({ game }: { game: Game }) {
                 name={j.name}
                 effect={j.effect}
                 Icon={jokerIcons[j.id as JokerId]}
-                onClick={() => setPlayingJoker(j)}
+                onClick={() => onPlayJoker(j)}
               />
             ))}
           </div>
         </div>
       )}
-
-      <AnimatePresence>
-        {playingJoker && (
-          <JokerPlayOverlay
-            name={playingJoker.name}
-            effect={playingJoker.effect}
-            Icon={jokerIcons[playingJoker.id as JokerId]}
-            onDone={() => {
-              if (playingJoker.id === 'switch') game.lucasSwitchReceived()
-              else game.lucasCloseWithJoker(playingJoker.id as 'boomerang' | 'flemme')
-              setPlayingJoker(null)
-            }}
-          />
-        )}
-      </AnimatePresence>
     </div>
   )
 }
