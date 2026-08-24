@@ -53,7 +53,7 @@ export function Progress() {
           <ArrowLeft size={16} /> Retour
         </Link>
 
-        <h1 className="font-display text-2xl text-black dark:text-cream">Profil de Lucas</h1>
+        <h1 className="font-display text-[2.1rem] leading-[1.05] text-black dark:text-cream">Profil de Lucas</h1>
 
         <div className="mt-4">
           <AuraGauge points={state.totalPoints} />

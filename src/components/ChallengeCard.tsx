@@ -36,7 +36,9 @@ export function ChallengeCard({ challenge, validated = false, className = '', si
           <p className="font-rounded text-[11px] font-semibold uppercase tracking-wide text-black/80">
             {category.name}
           </p>
-          <h3 className="font-display mt-1 text-lg leading-tight text-black">
+          <h3
+            className={`font-display mt-1 leading-tight text-black ${size === 'lg' ? 'text-xl' : 'text-lg'}`}
+          >
             {challenge.title}
           </h3>
         </div>
@@ -44,7 +46,9 @@ export function ChallengeCard({ challenge, validated = false, className = '', si
       </div>
 
       <div className="flex flex-1 flex-col justify-between px-5 py-4">
-        <p className="font-rounded text-sm leading-relaxed text-black/80 dark:text-cream/80">
+        <p
+          className={`font-rounded font-normal leading-relaxed text-black/80 dark:text-cream/80 ${size === 'lg' ? 'text-base' : 'text-sm'}`}
+        >
           {challenge.description}
         </p>
 

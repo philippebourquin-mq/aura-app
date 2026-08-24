@@ -67,7 +67,7 @@ export function ChallengeTakeover({
         }`}
       >
         <div className="text-center">
-          <p className="font-rounded text-base font-bold text-black dark:text-cream">
+          <p className="font-display text-2xl leading-tight text-black dark:text-cream">
             {role === 'lucas'
               ? submitted
                 ? "En attente de validation par ta team"
@@ -76,7 +76,7 @@ export function ChallengeTakeover({
                 ? 'Lucas a terminé son défi !'
                 : 'Lucas a un défi en cours'}
           </p>
-          <p className="font-rounded mt-1 text-sm text-black/50 dark:text-cream/50">
+          <p className="font-rounded mt-2 text-sm font-normal text-black/50 dark:text-cream/50">
             {expired ? 'Temps écoulé' : `Expire dans ${label}`}
           </p>
         </div>

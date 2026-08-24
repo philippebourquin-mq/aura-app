@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
+import { AnimatePresence, animate, motion, useMotionValue, useTransform } from 'framer-motion'
 import { ChallengeCard } from './ChallengeCard'
 import type { Challenge } from '../types'
 
@@ -9,14 +9,28 @@ interface DraggableProps {
   exitX: number
   onSwipe: (direction: 1 | -1) => void
   onChoose: () => void
+  /** Play a one-shot wiggle to teach the drag gesture — only the very first card of a session. */
+  hint: boolean
+  onHintPlayed: () => void
 }
 
-function DraggableCard({ challenge, validated, exitX, onSwipe, onChoose }: DraggableProps) {
+function DraggableCard({ challenge, validated, exitX, onSwipe, onChoose, hint, onHintPlayed }: DraggableProps) {
   const x = useMotionValue(0)
   const rotate = useTransform(x, [-220, 220], [-14, 14])
   // A tap that ends a real drag must never also fire the pick action — track actual
   // movement explicitly rather than relying solely on framer-motion's own tap/drag split.
   const draggedRef = useRef(false)
+
+  useEffect(() => {
+    if (!hint) return
+    const t = setTimeout(() => {
+      if (draggedRef.current) return
+      animate(x, [0, 18, -12, 6, 0], { duration: 1, ease: 'easeInOut' })
+      onHintPlayed()
+    }, 700)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <motion.div
@@ -64,6 +78,7 @@ interface Props {
 /** A Tinder-style stacked deck: drag the top card away to browse, tap it to choose it. */
 export function SwipeDeck({ pool, validatedChallengeIds, index, onIndexChange, onPick }: Props) {
   const [exitX, setExitX] = useState(0)
+  const hasHintedRef = useRef(false)
 
   const current = pool[index]
   const behind1 = pool[index + 1]
@@ -96,8 +111,15 @@ export function SwipeDeck({ pool, validatedChallengeIds, index, onIndexChange, o
             challenge={current}
             validated={validatedChallengeIds.includes(current.id)}
             exitX={exitX}
-            onSwipe={handleSwipe}
+            onSwipe={(direction) => {
+              hasHintedRef.current = true
+              handleSwipe(direction)
+            }}
             onChoose={() => onPick(current.id)}
+            hint={!hasHintedRef.current}
+            onHintPlayed={() => {
+              hasHintedRef.current = true
+            }}
           />
         )}
       </AnimatePresence>

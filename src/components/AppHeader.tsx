@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { animate, motion, useMotionValue, useTransform } from 'framer-motion'
 import { Trophy, UserRound, Users } from 'lucide-react'
 import type { Role } from '../types'
 
@@ -14,6 +16,18 @@ interface Props {
 export function AppHeader({ points, role, onRoleChange, wordmark = false }: Props) {
   const AvatarIcon = role === 'team' ? Users : UserRound
 
+  // Ticks up/down instead of jumping, so earning or losing points reads as an event
+  // even from the header — not just on the overlay that triggered it.
+  const count = useMotionValue(points)
+  const rounded = useTransform(count, (v) => Math.round(v).toString())
+  const prevPoints = useRef(points)
+  useEffect(() => {
+    if (prevPoints.current === points) return
+    prevPoints.current = points
+    const controls = animate(count, points, { duration: 0.6, ease: [0.22, 1, 0.36, 1] })
+    return () => controls.stop()
+  }, [points, count])
+
   return (
     <header className="sticky top-0 z-10 bg-cream/90 px-5 pt-4 pb-3 backdrop-blur dark:bg-neutral-950/90">
       <div className="flex items-center justify-between">
@@ -23,7 +37,7 @@ export function AppHeader({ points, role, onRoleChange, wordmark = false }: Prop
           aria-label="Points et profil"
         >
           <Trophy size={16} className="text-black/70 dark:text-cream/70" />
-          {points}
+          <motion.span>{rounded}</motion.span>
         </Link>
 
         <div className="flex rounded-full border border-black/10 bg-white/70 p-0.5 text-xs font-semibold dark:border-white/10 dark:bg-white/5">
@@ -59,7 +73,7 @@ export function AppHeader({ points, role, onRoleChange, wordmark = false }: Prop
       </div>
 
       {wordmark && (
-        <p className="font-display mt-3 text-2xl tracking-[0.15em] text-black dark:text-cream">AURA</p>
+        <p className="font-display mt-3 text-3xl tracking-[0.15em] text-black dark:text-cream">AURA</p>
       )}
     </header>
   )

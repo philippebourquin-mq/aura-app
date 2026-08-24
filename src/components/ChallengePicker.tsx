@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { categories } from '../data/categories'
 import { challenges } from '../data/challenges'
@@ -7,23 +8,21 @@ import type { CategoryId, Challenge } from '../types'
 
 interface Props {
   validatedChallengeIds: string[]
-  /** Lock the picker to a single category (used when browsing in from a category tile). */
-  lockedCategoryId?: CategoryId
   /** Team-created cards, merged into the same deck as the physical catalog. */
   customChallenges?: Challenge[]
   onPick: (challengeId: string) => void
 }
 
-export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, customChallenges = [], onPick }: Props) {
-  const [filter, setFilter] = useState<CategoryId | 'all'>(lockedCategoryId ?? 'all')
+export function ChallengePicker({ validatedChallengeIds, customChallenges = [], onPick }: Props) {
+  const [filter, setFilter] = useState<CategoryId | 'all'>('all')
   const [index, setIndex] = useState(0)
 
   const allChallenges = useMemo(() => [...challenges, ...customChallenges], [customChallenges])
 
-  const pool = useMemo(() => {
-    const activeFilter = lockedCategoryId ?? filter
-    return activeFilter === 'all' ? allChallenges : allChallenges.filter((c) => c.categoryId === activeFilter)
-  }, [lockedCategoryId, filter, allChallenges])
+  const pool = useMemo(
+    () => (filter === 'all' ? allChallenges : allChallenges.filter((c) => c.categoryId === filter)),
+    [filter, allChallenges],
+  )
 
   useEffect(() => setIndex(0), [pool])
 
@@ -32,30 +31,42 @@ export function ChallengePicker({ validatedChallengeIds, lockedCategoryId, custo
 
   return (
     <div>
-      {!lockedCategoryId && (
-        <div className="mb-5 flex flex-wrap justify-center gap-3">
-          <button
-            onClick={() => setFilter('all')}
-            aria-label="Toutes les catégories"
-            title="Toutes"
-            className={`h-6 w-6 flex-shrink-0 rounded-full border-2 bg-black transition ${
-              filter === 'all' ? 'border-black scale-110 dark:border-cream' : 'border-transparent opacity-40'
-            }`}
-          />
-          {categories.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setFilter(c.id)}
-              aria-label={c.name}
-              title={c.name}
-              className={`h-6 w-6 flex-shrink-0 rounded-full border-2 transition ${
-                filter === c.id ? 'scale-110 border-black dark:border-cream' : 'border-transparent opacity-40'
-              }`}
-              style={{ backgroundColor: c.hex }}
+      <div className="mb-5 flex flex-wrap justify-center gap-3">
+        <motion.button
+          whileTap={{ scale: 0.85 }}
+          onClick={() => setFilter('all')}
+          aria-label="Toutes les catégories"
+          title="Toutes"
+          className="relative h-6 w-6 flex-shrink-0 rounded-full bg-black"
+        >
+          {filter === 'all' && (
+            <motion.span
+              layoutId="category-filter-ring"
+              className="absolute -inset-1 rounded-full border-2 border-black dark:border-cream"
+              transition={{ type: 'spring', stiffness: 500, damping: 32 }}
             />
-          ))}
-        </div>
-      )}
+          )}
+        </motion.button>
+        {categories.map((c) => (
+          <motion.button
+            key={c.id}
+            whileTap={{ scale: 0.85 }}
+            onClick={() => setFilter(c.id)}
+            aria-label={c.name}
+            title={c.name}
+            className="relative h-6 w-6 flex-shrink-0 rounded-full"
+            style={{ backgroundColor: c.hex }}
+          >
+            {filter === c.id && (
+              <motion.span
+                layoutId="category-filter-ring"
+                className="absolute -inset-1 rounded-full border-2 border-black dark:border-cream"
+                transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+              />
+            )}
+          </motion.button>
+        ))}
+      </div>
 
       {pool.length === 0 ? (
         <p className="font-rounded py-8 text-center text-sm text-black/50 dark:text-cream/50">
