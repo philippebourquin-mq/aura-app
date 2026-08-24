@@ -53,8 +53,11 @@ export function ChallengeTile({ challenge, done = false, locked = false, onClick
     return <div className={className}>{content}</div>
   }
 
+  // Never natively `disabled` — a done or locked challenge still needs to be tappable
+  // to view its content, even though it can't be picked. The caller's onClick decides
+  // whether that tap opens a read-only view or starts the pick flow.
   return (
-    <button onClick={onClick} disabled={locked || done} aria-label={challenge.title} className={className}>
+    <button onClick={onClick} aria-label={challenge.title} className={className}>
       {content}
     </button>
   )

@@ -7,6 +7,7 @@ import { challenges, challengesByCategory } from '../data/challenges'
 import { useGameState } from '../state/useGameState'
 import { AppHeader } from '../components/AppHeader'
 import { CelebrationOverlay } from '../components/CelebrationOverlay'
+import { ChallengeDetailSheet } from '../components/ChallengeDetailSheet'
 import { ChallengeTakeover } from '../components/ChallengeTakeover'
 import { ChallengeTile } from '../components/ChallengeTile'
 import { ConfirmPickSheet } from '../components/ConfirmPickSheet'
@@ -25,6 +26,7 @@ export function Home() {
   const [browsing, setBrowsing] = useState<CategoryId | 'all' | null>(null)
   const [takeoverOpen, setTakeoverOpen] = useState(true)
   const [pendingPick, setPendingPick] = useState<Challenge | null>(null)
+  const [viewingChallenge, setViewingChallenge] = useState<Challenge | null>(null)
   const [celebration, setCelebration] = useState<{ challenge: Challenge; category: Category; amount: number } | null>(
     null,
   )
@@ -78,6 +80,13 @@ export function Home() {
   const handlePick = (challengeId: string) => {
     const challenge = allChallenges.find((c) => c.id === challengeId)
     if (challenge) setPendingPick(challenge)
+  }
+
+  // A done or already-locked tile can't be picked, but its content must stay reachable —
+  // tapping it opens a read-only view instead of silently doing nothing.
+  const handleTileTap = (challenge: Challenge, done: boolean, locked: boolean) => {
+    if (done || locked) setViewingChallenge(challenge)
+    else handlePick(challenge.id)
   }
 
   const commitPick = () => {
@@ -139,6 +148,15 @@ export function Home() {
             challengeTitle={loss.title}
             pointsLost={loss.pointsLost}
             onContinue={() => setLoss(null)}
+          />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {viewingChallenge && (
+          <ChallengeDetailSheet
+            challenge={viewingChallenge}
+            done={state.validatedChallengeIds.includes(viewingChallenge.id)}
+            onClose={() => setViewingChallenge(null)}
           />
         )}
       </AnimatePresence>
@@ -264,7 +282,7 @@ export function Home() {
                             challenge={challenge}
                             done={done}
                             locked={locked}
-                            onClick={() => handlePick(challenge.id)}
+                            onClick={() => handleTileTap(challenge, done, locked)}
                           />
                         )
                       })}

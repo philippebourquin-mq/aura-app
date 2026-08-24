@@ -1,17 +1,18 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Clock, Flag, Lock, Plus, Shuffle, XCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Link, useNavigate } from 'react-router-dom'
+import { ArrowLeft, CheckCircle2, Clock, Flag, Lock, Plus, RotateCcw, Shuffle, XCircle } from 'lucide-react'
 import { categories, categoryById } from '../data/categories'
 import { challenges, challengesByCategory } from '../data/challenges'
 import { useGameState } from '../state/useGameState'
 import { AppHeader } from '../components/AppHeader'
 import { AuraGauge } from '../components/AuraGauge'
+import { ChallengeDetailSheet } from '../components/ChallengeDetailSheet'
 import { ChallengeTile } from '../components/ChallengeTile'
 import { NewChallengeForm } from '../components/NewChallengeForm'
 import { achievements } from '../data/achievements'
 import { categoryIcons } from '../lib/categoryIcons'
-import type { CategoryId, HistoryOutcome } from '../types'
+import type { CategoryId, Challenge, HistoryOutcome } from '../types'
 
 const outcomeMeta: Record<HistoryOutcome, { label: string; icon: typeof CheckCircle2; className: string }> = {
   validated: { label: 'Validé', icon: CheckCircle2, className: 'text-emerald-600 dark:text-emerald-400' },
@@ -25,9 +26,20 @@ const outcomeMeta: Record<HistoryOutcome, { label: string; icon: typeof CheckCir
 export function Progress() {
   const game = useGameState()
   const { state, setRole } = game
+  const navigate = useNavigate()
   const [creatingFor, setCreatingFor] = useState<CategoryId | null>(null)
+  const [viewingChallenge, setViewingChallenge] = useState<Challenge | null>(null)
+  const [resetArmed, setResetArmed] = useState(false)
   const allChallenges = [...challenges, ...state.customChallenges]
   const creatingCategory = creatingFor ? categoryById(creatingFor) : null
+
+  // A tap arms the reset for a few seconds; a second tap within that window confirms it.
+  // Deliberately not a browser confirm() dialog — it should feel like part of the app.
+  useEffect(() => {
+    if (!resetArmed) return
+    const t = setTimeout(() => setResetArmed(false), 4000)
+    return () => clearTimeout(t)
+  }, [resetArmed])
 
   return (
     <div>
@@ -115,7 +127,14 @@ export function Progress() {
                 <div className="flex gap-2.5 overflow-x-auto px-6 pb-1">
                   {list.map((challenge) => {
                     const done = state.validatedChallengeIds.includes(challenge.id)
-                    return <ChallengeTile key={challenge.id} challenge={challenge} done={done} />
+                    return (
+                      <ChallengeTile
+                        key={challenge.id}
+                        challenge={challenge}
+                        done={done}
+                        onClick={() => setViewingChallenge(challenge)}
+                      />
+                    )
                   })}
                   {state.role === 'team' && (
                     <button
@@ -179,6 +198,36 @@ export function Progress() {
             </ul>
           </div>
         )}
+
+        {state.role === 'team' && (
+          <div className="mt-10 rounded-2xl border border-dashed border-black/15 p-4 dark:border-white/15">
+            <h2 className="font-rounded mb-1 text-xs font-semibold uppercase tracking-wide text-black/40 dark:text-cream/40">
+              Zone test — visible en mode Team uniquement
+            </h2>
+            <p className="font-rounded mb-3 text-xs text-black/40 dark:text-cream/40">
+              Outils réservés à la team pour tester l'app.
+            </p>
+            <button
+              onClick={() => {
+                if (resetArmed) {
+                  game.reset()
+                  setResetArmed(false)
+                  navigate('/')
+                } else {
+                  setResetArmed(true)
+                }
+              }}
+              className={`font-rounded flex w-full items-center justify-center gap-2 rounded-full py-3 text-sm font-bold transition ${
+                resetArmed
+                  ? 'bg-rose-600 text-white'
+                  : 'border border-black/15 text-black/70 dark:border-white/15 dark:text-cream/70'
+              }`}
+            >
+              <RotateCcw size={15} />
+              {resetArmed ? 'Confirmer : tout effacer et repartir de zéro' : 'Réinitialiser la partie'}
+            </button>
+          </div>
+        )}
       </div>
 
       {creatingCategory && (
@@ -191,6 +240,16 @@ export function Progress() {
           }}
         />
       )}
+
+      <AnimatePresence>
+        {viewingChallenge && (
+          <ChallengeDetailSheet
+            challenge={viewingChallenge}
+            done={state.validatedChallengeIds.includes(viewingChallenge.id)}
+            onClose={() => setViewingChallenge(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
