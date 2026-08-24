@@ -55,10 +55,10 @@ function DraggableCard({ challenge, validated, locked, exitX, onSwipe, onChoose,
       onTap={() => {
         if (!validated && !locked && !draggedRef.current) onChoose()
       }}
-      initial={{ scale: 0.94, opacity: 0.7, y: 8 }}
+      initial={{ scale: 0.96, opacity: 0.85, y: 4 }}
       animate={{ scale: 1, opacity: 1, y: 0, x: 0 }}
-      exit={{ x: exitX, opacity: 0, transition: { duration: 0.32, ease: 'easeOut' } }}
-      transition={{ type: 'spring', stiffness: 260, damping: 28, mass: 0.9 }}
+      exit={{ x: exitX, opacity: 0, transition: { duration: 0.18, ease: 'easeOut' } }}
+      transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.6 }}
     >
       <ChallengeCard
         challenge={challenge}
@@ -98,16 +98,34 @@ export function SwipeDeck({ pool, validatedChallengeIds, index, onIndexChange, o
 
   return (
     <div className="relative mx-auto h-[23.5rem] w-64">
-      {behind2 && (
-        <div className="absolute inset-x-0 top-6 scale-[0.88] opacity-50">
-          <ChallengeCard challenge={behind2} validated={validatedChallengeIds.includes(behind2.id)} />
-        </div>
-      )}
-      {behind1 && (
-        <div className="absolute inset-x-0 top-3 scale-[0.95] opacity-80">
-          <ChallengeCard challenge={behind1} validated={validatedChallengeIds.includes(behind1.id)} />
-        </div>
-      )}
+      <AnimatePresence>
+        {behind2 && (
+          <motion.div
+            key={behind2.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.5 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="absolute inset-x-0 top-6 scale-[0.88]"
+          >
+            <ChallengeCard challenge={behind2} validated={validatedChallengeIds.includes(behind2.id)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {behind1 && (
+          <motion.div
+            key={behind1.id}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.8 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="absolute inset-x-0 top-3 scale-[0.95]"
+          >
+            <ChallengeCard challenge={behind1} validated={validatedChallengeIds.includes(behind1.id)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* mode="wait" forces each card's exit to finish before the next one mounts. Without it,
           index changes faster than the ~0.32s exit duration (an entirely normal swiping pace)
           leave old cards stuck in the DOM instead of being removed, and a real touch/drag can
