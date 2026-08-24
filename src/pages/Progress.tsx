@@ -119,6 +119,34 @@ export function Progress({ game, openTakeover }: Props) {
           </div>
         </div>
 
+        <div className="mt-10">
+          <h2 className="font-rounded mb-3 text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-cream/60">
+            Catégories
+          </h2>
+          <div className="space-y-2">
+            {categories.map((c) => {
+              const Icon = categoryIcons[c.id]
+              return (
+                <div
+                  key={c.id}
+                  className="font-rounded flex items-center gap-3 rounded-lg bg-white px-4 py-3 dark:bg-white/10"
+                >
+                  <span
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: c.hex }}
+                  >
+                    <Icon size={15} className="text-black/75" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold capitalize text-black dark:text-cream">{c.name}</p>
+                    <p className="text-xs font-normal text-black/55 dark:text-cream/55">{c.tagline}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
         <div className="mt-10 space-y-6">
           <h2 className="font-rounded text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-cream/60">
             Défis

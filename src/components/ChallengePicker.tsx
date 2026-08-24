@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, LayoutGrid } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { categories } from '../data/categories'
 import { challenges } from '../data/challenges'
-import { categoryIcons } from '../lib/categoryIcons'
 import { SwipeDeck } from './SwipeDeck'
 import type { CategoryId, Challenge } from '../types'
 
@@ -16,56 +15,26 @@ interface Props {
   locked?: boolean
 }
 
-const LONG_PRESS_MS = 450
-
-/** What the info popover needs, whichever dot it came from. */
-interface InfoCard {
-  name: string
-  tagline: string
-  hex: string
-  Icon: (typeof categoryIcons)[CategoryId]
-}
-
-const ALL_INFO: InfoCard = {
-  name: 'Toutes les catégories',
-  tagline: 'Tous les défis, toutes catégories confondues.',
-  hex: '#111111',
-  Icon: LayoutGrid,
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
 }
 
 export function ChallengePicker({ validatedChallengeIds, customChallenges = [], onPick, locked = false }: Props) {
   const [filter, setFilter] = useState<CategoryId | 'all'>('all')
   const [index, setIndex] = useState(0)
-  const [infoCard, setInfoCard] = useState<InfoCard | null>(null)
-
-  // A long-press on a filter dot shows its category's description without changing the
-  // filter — the click handler that follows checks this flag and skips the filter change.
-  const longPressTimer = useRef<number | null>(null)
-  const longPressFiredRef = useRef(false)
-  const startLongPress = (card: InfoCard) => {
-    longPressFiredRef.current = false
-    longPressTimer.current = window.setTimeout(() => {
-      longPressFiredRef.current = true
-      setInfoCard(card)
-    }, LONG_PRESS_MS)
-  }
-  const cancelLongPress = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current)
-      longPressTimer.current = null
-    }
-  }
-
-  useEffect(() => {
-    if (!infoCard) return
-    const t = setTimeout(() => setInfoCard(null), 3500)
-    return () => clearTimeout(t)
-  }, [infoCard])
 
   const allChallenges = useMemo(() => [...challenges, ...customChallenges], [customChallenges])
 
+  // "Toutes" mixes every category together instead of appearing grouped block by block —
+  // a single-category filter has nothing to mix, so it keeps the catalog's own order.
   const pool = useMemo(
-    () => (filter === 'all' ? allChallenges : allChallenges.filter((c) => c.categoryId === filter)),
+    () =>
+      filter === 'all' ? shuffle(allChallenges) : allChallenges.filter((c) => c.categoryId === filter),
     [filter, allChallenges],
   )
 
@@ -81,31 +50,38 @@ export function ChallengePicker({ validatedChallengeIds, customChallenges = [], 
 
   return (
     <div>
-      {/* Echoes the physical game's rules card, which lists all 5 categories — a long
-          press on any dot recalls that category's description, same as flipping to it. */}
-      <div className="mb-10 rounded-card border border-black/10 bg-white/60 p-4 dark:border-white/10 dark:bg-white/5">
-        <p className="font-rounded mb-3 text-center text-[11px] font-bold uppercase tracking-[0.15em] text-black/35 dark:text-cream/35">
-          Catégories
-        </p>
-        <div className="flex flex-wrap justify-center gap-3.5">
+      <p className="font-rounded mb-3 text-center text-[11px] font-bold uppercase tracking-[0.15em] text-black/35 dark:text-cream/35">
+        Filtrer par catégorie
+      </p>
+      <div className="mb-10 flex flex-wrap justify-center gap-3.5">
+        <motion.button
+          whileHover={{ scale: 1.15, boxShadow: '0 0 0 3px rgba(0,0,0,0.3)' }}
+          whileTap={{ scale: 0.85 }}
+          onClick={() => setFilter('all')}
+          aria-label="Toutes les catégories"
+          title="Toutes"
+          className="relative h-7 w-7 flex-shrink-0 rounded-full bg-black ring-1 ring-black/10 dark:ring-white/20"
+        >
+          {filter === 'all' && (
+            <motion.span
+              layoutId="category-filter-ring"
+              className="absolute -inset-1.5 rounded-full border-2 border-black dark:border-cream"
+              transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+            />
+          )}
+        </motion.button>
+        {categories.map((c) => (
           <motion.button
+            key={c.id}
+            whileHover={{ scale: 1.15, boxShadow: `0 0 0 3px ${c.hex}80` }}
             whileTap={{ scale: 0.85 }}
-            onClick={() => {
-              if (longPressFiredRef.current) {
-                longPressFiredRef.current = false
-                return
-              }
-              setFilter('all')
-            }}
-            onPointerDown={() => startLongPress(ALL_INFO)}
-            onPointerUp={cancelLongPress}
-            onPointerLeave={cancelLongPress}
-            onPointerCancel={cancelLongPress}
-            aria-label="Toutes les catégories"
-            title="Toutes"
-            className="relative h-7 w-7 flex-shrink-0 rounded-full bg-black ring-1 ring-black/10 dark:ring-white/20"
+            onClick={() => setFilter(c.id)}
+            aria-label={c.name}
+            title={c.name}
+            className="relative h-7 w-7 flex-shrink-0 rounded-full ring-1 ring-black/10 dark:ring-white/20"
+            style={{ backgroundColor: c.hex }}
           >
-            {filter === 'all' && (
+            {filter === c.id && (
               <motion.span
                 layoutId="category-filter-ring"
                 className="absolute -inset-1.5 rounded-full border-2 border-black dark:border-cream"
@@ -113,68 +89,7 @@ export function ChallengePicker({ validatedChallengeIds, customChallenges = [], 
               />
             )}
           </motion.button>
-          {categories.map((c) => (
-            <motion.button
-              key={c.id}
-              whileTap={{ scale: 0.85 }}
-              onClick={() => {
-                if (longPressFiredRef.current) {
-                  longPressFiredRef.current = false
-                  return
-                }
-                setFilter(c.id)
-              }}
-              onPointerDown={() => startLongPress({ name: c.name, tagline: c.tagline, hex: c.hex, Icon: categoryIcons[c.id] })}
-              onPointerUp={cancelLongPress}
-              onPointerLeave={cancelLongPress}
-              onPointerCancel={cancelLongPress}
-              aria-label={c.name}
-              title={c.name}
-              className="relative h-7 w-7 flex-shrink-0 rounded-full ring-1 ring-black/10 dark:ring-white/20"
-              style={{ backgroundColor: c.hex }}
-            >
-              {filter === c.id && (
-                <motion.span
-                  layoutId="category-filter-ring"
-                  className="absolute -inset-1.5 rounded-full border-2 border-black dark:border-cream"
-                  transition={{ type: 'spring', stiffness: 500, damping: 32 }}
-                />
-              )}
-            </motion.button>
-          ))}
-        </div>
-
-        <AnimatePresence>
-          {infoCard && (
-            <motion.div
-              initial={{ opacity: 0, y: -6, height: 0 }}
-              animate={{ opacity: 1, y: 0, height: 'auto' }}
-              exit={{ opacity: 0, y: -6, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div
-                className="mt-3.5 flex items-center gap-2.5 rounded-xl px-3 py-2.5"
-                style={{ backgroundColor: `${infoCard.hex}1F` }}
-              >
-                <span
-                  className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full"
-                  style={{ backgroundColor: infoCard.hex }}
-                >
-                  <infoCard.Icon size={13} className={infoCard.hex === '#111111' ? 'text-cream' : 'text-black/70'} />
-                </span>
-                <div className="min-w-0">
-                  <p className="font-rounded text-xs font-bold capitalize text-black dark:text-cream">
-                    {infoCard.name}
-                  </p>
-                  <p className="font-rounded text-[11px] font-normal text-black/60 dark:text-cream/60">
-                    {infoCard.tagline}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        ))}
       </div>
 
       {pool.length === 0 ? (
