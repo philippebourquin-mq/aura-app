@@ -6,6 +6,8 @@ import type { Challenge } from '../types'
 interface DraggableProps {
   challenge: Challenge
   validated: boolean
+  /** A run is already in progress — browsing still works, but tapping can't pick. */
+  locked: boolean
   exitX: number
   onSwipe: (direction: 1 | -1) => void
   onChoose: () => void
@@ -14,7 +16,7 @@ interface DraggableProps {
   onHintPlayed: () => void
 }
 
-function DraggableCard({ challenge, validated, exitX, onSwipe, onChoose, hint, onHintPlayed }: DraggableProps) {
+function DraggableCard({ challenge, validated, locked, exitX, onSwipe, onChoose, hint, onHintPlayed }: DraggableProps) {
   const x = useMotionValue(0)
   const rotate = useTransform(x, [-220, 220], [-14, 14])
   // A tap that ends a real drag must never also fire the pick action — track actual
@@ -51,7 +53,7 @@ function DraggableCard({ challenge, validated, exitX, onSwipe, onChoose, hint, o
         else if (info.offset.x < -100 || info.velocity.x < -400) onSwipe(-1)
       }}
       onTap={() => {
-        if (!validated && !draggedRef.current) onChoose()
+        if (!validated && !locked && !draggedRef.current) onChoose()
       }}
       initial={{ scale: 0.94, opacity: 0.7, y: 8 }}
       animate={{ scale: 1, opacity: 1, y: 0, x: 0 }}
@@ -73,10 +75,12 @@ interface Props {
   index: number
   onIndexChange: (index: number) => void
   onPick: (challengeId: string) => void
+  /** A run is already in progress — browsing still works, but tapping can't pick a new one. */
+  locked?: boolean
 }
 
 /** A Tinder-style stacked deck: drag the top card away to browse, tap it to choose it. */
-export function SwipeDeck({ pool, validatedChallengeIds, index, onIndexChange, onPick }: Props) {
+export function SwipeDeck({ pool, validatedChallengeIds, index, onIndexChange, onPick, locked = false }: Props) {
   const [exitX, setExitX] = useState(0)
   const hasHintedRef = useRef(false)
 
@@ -110,6 +114,7 @@ export function SwipeDeck({ pool, validatedChallengeIds, index, onIndexChange, o
             key={current.id}
             challenge={current}
             validated={validatedChallengeIds.includes(current.id)}
+            locked={locked}
             exitX={exitX}
             onSwipe={(direction) => {
               hasHintedRef.current = true

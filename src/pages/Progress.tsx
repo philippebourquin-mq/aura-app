@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, Clock, Flag, Lock, Plus, RotateCcw, Shuffle, XCircle } from 'lucide-react'
-import { categories, categoryById } from '../data/categories'
+import { categories, categoryById, jokers, JOKER_HEX } from '../data/categories'
 import { challenges, challengesByCategory } from '../data/challenges'
-import { useGameState } from '../state/useGameState'
 import { AppHeader } from '../components/AppHeader'
 import { AuraGauge } from '../components/AuraGauge'
 import { ChallengeDetailSheet } from '../components/ChallengeDetailSheet'
@@ -12,7 +11,11 @@ import { ChallengeTile } from '../components/ChallengeTile'
 import { NewChallengeForm } from '../components/NewChallengeForm'
 import { achievements } from '../data/achievements'
 import { categoryIcons } from '../lib/categoryIcons'
-import type { CategoryId, Challenge, HistoryOutcome } from '../types'
+import { jokerIcons } from '../lib/jokerIcons'
+import type { useGameState } from '../state/useGameState'
+import type { CategoryId, Challenge, HistoryOutcome, JokerId } from '../types'
+
+type Game = ReturnType<typeof useGameState>
 
 const outcomeMeta: Record<HistoryOutcome, { label: string; icon: typeof CheckCircle2; className: string }> = {
   validated: { label: 'Validé', icon: CheckCircle2, className: 'text-emerald-600 dark:text-emerald-400' },
@@ -23,8 +26,12 @@ const outcomeMeta: Record<HistoryOutcome, { label: string; icon: typeof CheckCir
   'not-validated': { label: 'Non validé', icon: XCircle, className: 'text-rose-500/80 dark:text-rose-400/80' },
 }
 
-export function Progress() {
-  const game = useGameState()
+interface Props {
+  game: Game
+  openTakeover: () => void
+}
+
+export function Progress({ game, openTakeover }: Props) {
   const { state, setRole } = game
   const navigate = useNavigate()
   const [creatingFor, setCreatingFor] = useState<CategoryId | null>(null)
@@ -32,6 +39,8 @@ export function Progress() {
   const [resetArmed, setResetArmed] = useState(false)
   const allChallenges = [...challenges, ...state.customChallenges]
   const creatingCategory = creatingFor ? categoryById(creatingFor) : null
+  const run = state.currentRun
+  const runChallenge = run ? allChallenges.find((c) => c.id === run.challengeId) : undefined
 
   // A tap arms the reset for a few seconds; a second tap within that window confirms it.
   // Deliberately not a browser confirm() dialog — it should feel like part of the app.
@@ -43,7 +52,12 @@ export function Progress() {
 
   return (
     <div>
-      <AppHeader points={state.totalPoints} role={state.role} onRoleChange={setRole} />
+      <AppHeader
+        points={state.totalPoints}
+        role={state.role}
+        onRoleChange={setRole}
+        currentRun={run && runChallenge ? { run, challenge: runChallenge, onOpen: openTakeover } : undefined}
+      />
 
       <div className="mx-auto max-w-lg px-6 pt-3 pb-16">
         <Link
@@ -154,6 +168,52 @@ export function Progress() {
           })}
         </div>
 
+        <div className="mt-10">
+          <h2 className="font-rounded mb-3 text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-cream/60">
+            Jokers
+          </h2>
+          <div className="space-y-2">
+            {jokers.map((j) => {
+              const used = state.jokersUsed.includes(j.id as JokerId)
+              const Icon = jokerIcons[j.id as JokerId]
+              return (
+                <div
+                  key={j.id}
+                  className="font-rounded flex items-center justify-between gap-2 rounded-lg bg-white px-4 py-2.5 text-sm dark:bg-white/10"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span
+                      className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full"
+                      style={{ backgroundColor: JOKER_HEX }}
+                    >
+                      <Icon size={13} className="text-black/75" />
+                    </span>
+                    <span className="font-semibold text-black dark:text-cream">{j.name}</span>
+                  </span>
+                  {used ? (
+                    state.role === 'team' ? (
+                      <button
+                        onClick={() => game.requeueJoker(j.id as JokerId)}
+                        className="font-rounded flex-shrink-0 rounded-full border border-black/15 px-3 py-1 text-xs font-semibold text-black/60 hover:bg-black/5 dark:border-white/15 dark:text-cream/60 dark:hover:bg-white/10"
+                      >
+                        Remettre en jeu
+                      </button>
+                    ) : (
+                      <span className="flex-shrink-0 text-xs font-semibold text-black/30 dark:text-cream/30">
+                        Utilisé
+                      </span>
+                    )
+                  ) : (
+                    <span className="flex-shrink-0 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      Disponible
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
         {state.history.length > 0 && (
           <div className="mt-10">
             <h2 className="font-rounded mb-3 text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-cream/60">
@@ -246,6 +306,11 @@ export function Progress() {
           <ChallengeDetailSheet
             challenge={viewingChallenge}
             done={state.validatedChallengeIds.includes(viewingChallenge.id)}
+            canRequeue={state.role === 'team'}
+            onRequeue={() => {
+              game.requeueChallenge(viewingChallenge.id)
+              setViewingChallenge(null)
+            }}
             onClose={() => setViewingChallenge(null)}
           />
         )}

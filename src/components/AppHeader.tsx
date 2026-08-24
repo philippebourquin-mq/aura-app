@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { animate, motion, useMotionValue, useTransform } from 'framer-motion'
 import { Trophy, UserRound, Users } from 'lucide-react'
-import type { Role } from '../types'
+import { CurrentRunBar } from './CurrentRunBar'
+import type { Challenge, ChallengeRun, Role } from '../types'
 
 interface Props {
   points: number
@@ -10,10 +11,12 @@ interface Props {
   onRoleChange: (role: Role) => void
   /** Only the true home screen repeats the wordmark, per the wireframe. */
   wordmark?: boolean
+  /** The one current run, if any — rendered as a persistent status bar under the header. */
+  currentRun?: { run: ChallengeRun; challenge: Challenge; onOpen: () => void }
 }
 
 /** trophy+points top-left, role switcher centered, avatar top-right — the header on every screen. */
-export function AppHeader({ points, role, onRoleChange, wordmark = false }: Props) {
+export function AppHeader({ points, role, onRoleChange, wordmark = false, currentRun }: Props) {
   const AvatarIcon = role === 'team' ? Users : UserRound
 
   // Ticks up/down instead of jumping, so earning or losing points reads as an event
@@ -74,6 +77,15 @@ export function AppHeader({ points, role, onRoleChange, wordmark = false }: Prop
 
       {wordmark && (
         <p className="font-display mt-3 text-3xl tracking-[0.15em] text-black dark:text-cream">AURA</p>
+      )}
+
+      {currentRun && (
+        <CurrentRunBar
+          run={currentRun.run}
+          challenge={currentRun.challenge}
+          role={role}
+          onOpen={currentRun.onOpen}
+        />
       )}
     </header>
   )

@@ -278,6 +278,16 @@ export function useGameState() {
     setState(initialState())
   }, [])
 
+  /** Team's admin tool: put a validated challenge back into the pool, at their discretion. */
+  const requeueChallenge = useCallback((challengeId: string) => {
+    setState((s) => ({ ...s, validatedChallengeIds: s.validatedChallengeIds.filter((id) => id !== challengeId) }))
+  }, [])
+
+  /** Team's admin tool: give a spent joker back, at their discretion. */
+  const requeueJoker = useCallback((jokerId: JokerId) => {
+    setState((s) => ({ ...s, jokersUsed: s.jokersUsed.filter((id) => id !== jokerId) }))
+  }, [])
+
   return {
     state,
     setRole,
@@ -293,5 +303,7 @@ export function useGameState() {
     teamDeny,
     createCustomChallenge,
     reset,
+    requeueChallenge,
+    requeueJoker,
   }
 }

@@ -5,6 +5,9 @@ import type { Challenge } from '../types'
 interface Props {
   challenge: Challenge
   done: boolean
+  /** Team's admin ability to put a validated challenge back into play, at their discretion. */
+  canRequeue?: boolean
+  onRequeue?: () => void
   onClose: () => void
 }
 
@@ -12,7 +15,7 @@ interface Props {
  * Read-only view of a card's full content — reachable from any tile, including
  * completed ones, since a validated challenge shouldn't become impossible to reopen.
  */
-export function ChallengeDetailSheet({ challenge, done, onClose }: Props) {
+export function ChallengeDetailSheet({ challenge, done, canRequeue = false, onRequeue, onClose }: Props) {
   return (
     <motion.div
       className="fixed inset-0 z-50 flex flex-col items-center justify-end bg-black/40 px-0 backdrop-blur-sm sm:justify-center sm:px-6"
@@ -31,6 +34,14 @@ export function ChallengeDetailSheet({ challenge, done, onClose }: Props) {
         className="flex w-full max-w-sm flex-col items-center gap-5 rounded-t-[2rem] bg-cream px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6 dark:bg-neutral-950 sm:rounded-[2rem] sm:pb-6"
       >
         <ChallengeCard challenge={challenge} validated={done} />
+        {done && canRequeue && onRequeue && (
+          <button
+            onClick={onRequeue}
+            className="font-rounded w-full rounded-full border border-amber-500/40 py-3 text-sm font-semibold text-amber-700 dark:border-amber-400/30 dark:text-amber-400"
+          >
+            Remettre ce défi en jeu
+          </button>
+        )}
         <button
           onClick={onClose}
           className="font-rounded w-full rounded-full border border-black/15 py-3 text-sm font-semibold text-black/70 dark:border-white/15 dark:text-cream/70"

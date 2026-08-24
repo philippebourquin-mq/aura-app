@@ -11,9 +11,11 @@ interface Props {
   /** Team-created cards, merged into the same deck as the physical catalog. */
   customChallenges?: Challenge[]
   onPick: (challengeId: string) => void
+  /** A run is already in progress — the deck stays browsable, but picking is disabled. */
+  locked?: boolean
 }
 
-export function ChallengePicker({ validatedChallengeIds, customChallenges = [], onPick }: Props) {
+export function ChallengePicker({ validatedChallengeIds, customChallenges = [], onPick, locked = false }: Props) {
   const [filter, setFilter] = useState<CategoryId | 'all'>('all')
   const [index, setIndex] = useState(0)
 
@@ -83,6 +85,7 @@ export function ChallengePicker({ validatedChallengeIds, customChallenges = [], 
             index={index}
             onIndexChange={setIndex}
             onPick={onPick}
+            locked={locked}
           />
 
           <div className="mt-6 flex items-center justify-center gap-4">
@@ -106,7 +109,11 @@ export function ChallengePicker({ validatedChallengeIds, customChallenges = [], 
           </div>
 
           <p className="font-rounded mt-4 text-center text-xs text-black/40 dark:text-cream/40">
-            {currentIsValidated ? 'Déjà validé — glisse pour voir la suite' : 'Tape la carte pour la choisir'}
+            {locked
+              ? 'Un défi est déjà en cours — regarde en attendant'
+              : currentIsValidated
+                ? 'Déjà validé — glisse pour voir la suite'
+                : 'Tape la carte pour la choisir'}
           </p>
         </>
       )}
