@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Asterisk, ChevronLeft, ChevronRight } from 'lucide-react'
 import { categories } from '../data/categories'
 import { challenges } from '../data/challenges'
 import { SwipeDeck } from './SwipeDeck'
 import type { CategoryId, Challenge } from '../types'
+
+type DoneFilter = 'all' | 'todo' | 'done'
 
 interface Props {
   validatedChallengeIds: string[]
@@ -34,17 +36,26 @@ export function ChallengePicker({
   locked = false,
 }: Props) {
   const [filter, setFilter] = useState<CategoryId | 'all'>('all')
+  const [doneFilter, setDoneFilter] = useState<DoneFilter>('all')
   const [index, setIndex] = useState(0)
 
   const allChallenges = useMemo(() => [...challenges, ...customChallenges], [customChallenges])
 
   // "Toutes" mixes every category together instead of appearing grouped block by block —
   // a single-category filter has nothing to mix, so it keeps the catalog's own order.
-  const pool = useMemo(
+  const categoryPool = useMemo(
     () =>
       filter === 'all' ? shuffle(allChallenges) : allChallenges.filter((c) => c.categoryId === filter),
     [filter, allChallenges],
   )
+
+  // Layered on top instead of folded into the shuffle above — this only narrows the
+  // already-shuffled order, it never re-shuffles it just because a challenge somewhere
+  // got validated while browsing.
+  const pool = useMemo(() => {
+    if (doneFilter === 'all') return categoryPool
+    return categoryPool.filter((c) => validatedChallengeIds.includes(c.id) === (doneFilter === 'done'))
+  }, [categoryPool, doneFilter, validatedChallengeIds])
 
   // A random landing card each time — so the deck doesn't always open on the same
   // first card of a category (or the catalog) — not on every render, only when the
@@ -61,15 +72,16 @@ export function ChallengePicker({
       <p className="font-rounded mb-3 text-center text-[11px] font-bold uppercase tracking-[0.15em] text-black/35 dark:text-cream/35">
         Filtrer par catégorie
       </p>
-      <div className="mb-10 flex flex-wrap justify-center gap-3.5">
+      <div className="mb-2 flex flex-wrap justify-center gap-3.5">
         <motion.button
-          whileHover={{ scale: 1.15, boxShadow: '0 0 0 3px rgba(0,0,0,0.3)' }}
+          whileHover={{ scale: 1.15, boxShadow: '0 0 0 3px rgba(0,0,0,0.25)' }}
           whileTap={{ scale: 0.85 }}
           onClick={() => setFilter('all')}
           aria-label="Toutes les catégories"
           title="Toutes"
-          className="relative h-7 w-7 flex-shrink-0 rounded-full bg-black ring-1 ring-black/10 dark:ring-white/20"
+          className="relative flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-black/25 bg-transparent text-black/60 dark:border-cream/25 dark:text-cream/60"
         >
+          <Asterisk size={13} strokeWidth={2.5} />
           {filter === 'all' && (
             <motion.span
               layoutId="category-filter-ring"
@@ -98,6 +110,47 @@ export function ChallengePicker({
             )}
           </motion.button>
         ))}
+      </div>
+
+      <div className="mb-6 flex h-4 items-center justify-center px-6">
+        <AnimatePresence mode="wait">
+          {filter !== 'all' && (
+            <motion.p
+              key={filter}
+              initial={{ opacity: 0, y: -2 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -2 }}
+              transition={{ duration: 0.18 }}
+              className="font-rounded text-center text-[11px] italic text-black/40 dark:text-cream/40"
+            >
+              {categories.find((c) => c.id === filter)?.tagline}
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="mb-8 flex justify-center">
+        <div className="flex rounded-full border border-black/10 bg-white/70 p-0.5 text-[11px] font-semibold dark:border-white/10 dark:bg-white/5">
+          {(
+            [
+              ['all', 'Tous'],
+              ['todo', 'À faire'],
+              ['done', 'Faits'],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              onClick={() => setDoneFilter(value)}
+              className={`font-rounded rounded-full px-2.5 py-1 transition ${
+                doneFilter === value
+                  ? 'bg-black text-cream'
+                  : 'text-black/40 hover:text-black dark:text-cream/40 dark:hover:text-cream'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {pool.length === 0 ? (
