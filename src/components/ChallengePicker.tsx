@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Asterisk, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Check, CircleDashed, ChevronLeft, ChevronRight } from 'lucide-react'
 import { categories } from '../data/categories'
 import { challenges } from '../data/challenges'
 import { SwipeDeck } from './SwipeDeck'
@@ -72,16 +72,18 @@ export function ChallengePicker({
       <p className="font-rounded mb-3 text-center text-[11px] font-bold uppercase tracking-[0.15em] text-black/35 dark:text-cream/35">
         Filtrer par catégorie
       </p>
-      <div className="mb-2 flex flex-wrap justify-center gap-3.5">
+      <div className="mb-2 flex flex-wrap justify-center gap-2.5">
         <motion.button
           whileHover={{ scale: 1.15, boxShadow: '0 0 0 3px rgba(0,0,0,0.25)' }}
           whileTap={{ scale: 0.85 }}
-          onClick={() => setFilter('all')}
+          onClick={() => {
+            setFilter('all')
+            setDoneFilter('all')
+          }}
           aria-label="Toutes les catégories"
           title="Toutes"
-          className="relative flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-black/25 bg-transparent text-black/60 dark:border-cream/25 dark:text-cream/60"
+          className="relative h-7 w-7 flex-shrink-0 rounded-full border border-black/25 bg-transparent dark:border-cream/25"
         >
-          <Asterisk size={13} strokeWidth={2.5} />
           {filter === 'all' && (
             <motion.span
               layoutId="category-filter-ring"
@@ -110,9 +112,43 @@ export function ChallengePicker({
             )}
           </motion.button>
         ))}
+        <motion.button
+          whileHover={{ scale: 1.15, boxShadow: '0 0 0 3px rgba(0,0,0,0.25)' }}
+          whileTap={{ scale: 0.85 }}
+          onClick={() => setDoneFilter((d) => (d === 'done' ? 'all' : 'done'))}
+          aria-label="Défis déjà faits"
+          title="Faits"
+          className="relative flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-black/25 bg-transparent text-black/60 dark:border-cream/25 dark:text-cream/60"
+        >
+          <Check size={13} strokeWidth={2.5} />
+          {doneFilter === 'done' && (
+            <motion.span
+              layoutId="done-filter-ring"
+              className="absolute -inset-1.5 rounded-full border-2 border-black dark:border-cream"
+              transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+            />
+          )}
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.15, boxShadow: '0 0 0 3px rgba(0,0,0,0.25)' }}
+          whileTap={{ scale: 0.85 }}
+          onClick={() => setDoneFilter((d) => (d === 'todo' ? 'all' : 'todo'))}
+          aria-label="Défis à faire"
+          title="À faire"
+          className="relative flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border border-black/25 bg-transparent text-black/60 dark:border-cream/25 dark:text-cream/60"
+        >
+          <CircleDashed size={13} strokeWidth={2.5} />
+          {doneFilter === 'todo' && (
+            <motion.span
+              layoutId="done-filter-ring"
+              className="absolute -inset-1.5 rounded-full border-2 border-black dark:border-cream"
+              transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+            />
+          )}
+        </motion.button>
       </div>
 
-      <div className="mb-6 flex h-4 items-center justify-center px-6">
+      <div className="mb-8 flex h-4 items-center justify-center px-6">
         <AnimatePresence mode="wait">
           {filter !== 'all' && (
             <motion.p
@@ -121,36 +157,12 @@ export function ChallengePicker({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -2 }}
               transition={{ duration: 0.18 }}
-              className="font-rounded text-center text-[11px] italic text-black/40 dark:text-cream/40"
+              className="font-rounded text-center text-[11px] italic text-black/50 dark:text-cream/50"
             >
               {categories.find((c) => c.id === filter)?.tagline}
             </motion.p>
           )}
         </AnimatePresence>
-      </div>
-
-      <div className="mb-8 flex justify-center">
-        <div className="flex rounded-full border border-black/10 bg-white/70 p-0.5 text-[11px] font-semibold dark:border-white/10 dark:bg-white/5">
-          {(
-            [
-              ['all', 'Tous'],
-              ['todo', 'À faire'],
-              ['done', 'Faits'],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              onClick={() => setDoneFilter(value)}
-              className={`font-rounded rounded-full px-2.5 py-1 transition ${
-                doneFilter === value
-                  ? 'bg-black text-cream'
-                  : 'text-black/40 hover:text-black dark:text-cream/40 dark:hover:text-cream'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
       </div>
 
       {pool.length === 0 ? (
