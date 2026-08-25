@@ -107,10 +107,20 @@ export function SwipeDeck({
 }: Props) {
   const [exitX, setExitX] = useState(0)
   const hasHintedRef = useRef(false)
+  // The peek stack (behind1/behind2) only catches up to `index` once the front card's
+  // own exit has actually finished — otherwise it jumps ahead while the front card is
+  // still mid-slide, and the next-next card flashes through where the next card should
+  // still be hidden. A filter switch (new pool) snaps immediately instead of waiting.
+  const [stackIndex, setStackIndex] = useState(index)
+
+  useEffect(() => {
+    setStackIndex(index)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pool])
 
   const current = pool[index]
-  const behind1 = pool[index + 1]
-  const behind2 = pool[index + 2]
+  const behind1 = pool[stackIndex + 1]
+  const behind2 = pool[stackIndex + 2]
 
   // Wraps around at both ends — the deck is a loop, like flipping through the physical stack.
   const handleSwipe = (direction: 1 | -1) => {
@@ -155,7 +165,7 @@ export function SwipeDeck({
           leave old cards stuck in the DOM instead of being removed, and a real touch/drag can
           land on one of those dead leftovers instead of the live top card — silently swallowing
           the gesture, which reads as the deck "getting stuck". */}
-      <AnimatePresence initial={false} mode="wait">
+      <AnimatePresence initial={false} mode="wait" onExitComplete={() => setStackIndex(index)}>
         {current && (
           <DraggableCard
             key={current.id}
