@@ -1,14 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { AnimatePresence, animate, motion, useMotionValue, useTransform } from 'framer-motion'
+import { animate, motion, useMotionValue, useTransform } from 'framer-motion'
 import { ChallengeCard } from './ChallengeCard'
 import type { Challenge } from '../types'
 
-interface DraggableProps {
+const DEPTH_STYLE = [
+  { y: 0, scale: 1, opacity: 1 },
+  { y: 12, scale: 0.95, opacity: 0.8 },
+  { y: 24, scale: 0.88, opacity: 0.5 },
+] as const
+
+interface StackCardProps {
   challenge: Challenge
+  depth: number
   validated: boolean
   /** A run is already in progress — browsing still works, but tapping can't pick. */
   locked: boolean
-  exitX: number
   onSwipe: (direction: 1 | -1) => void
   onChoose: () => void
   /** A validated card can't be picked again — tapping it opens its read-only detail instead. */
@@ -18,17 +24,24 @@ interface DraggableProps {
   onHintPlayed: () => void
 }
 
-function DraggableCard({
+/**
+ * One persisted element per challenge in the visible window — it stays mounted as it
+ * moves through depths 2 -> 1 -> 0, so a promotion is a single continuous transform
+ * (position/scale/opacity tweening to the new depth's target) instead of a fresh card
+ * popping in. Only the front (depth 0) card is draggable/tappable.
+ */
+function StackCard({
   challenge,
+  depth,
   validated,
   locked,
-  exitX,
   onSwipe,
   onChoose,
   onViewDetail,
   hint,
   onHintPlayed,
-}: DraggableProps) {
+}: StackCardProps) {
+  const isFront = depth === 0
   const x = useMotionValue(0)
   const rotate = useTransform(x, [-220, 220], [-14, 14])
   // A tap that ends a real drag must never also fire the pick action — track actual
@@ -36,7 +49,7 @@ function DraggableCard({
   const draggedRef = useRef(false)
 
   useEffect(() => {
-    if (!hint) return
+    if (!hint || !isFront) return
     const t = setTimeout(() => {
       if (draggedRef.current) return
       animate(x, [0, 18, -12, 6, 0], { duration: 1, ease: 'easeInOut' })
@@ -46,11 +59,13 @@ function DraggableCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const style = DEPTH_STYLE[Math.min(depth, DEPTH_STYLE.length - 1)]
+
   return (
     <motion.div
-      className="absolute inset-0 touch-pan-y select-none"
-      style={{ x, rotate, touchAction: 'pan-y' }}
-      drag="x"
+      className="absolute inset-0 select-none"
+      style={{ x, rotate, zIndex: 3 - depth, touchAction: isFront ? 'pan-y' : 'auto' }}
+      drag={isFront ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={1}
       dragMomentum={false}
@@ -61,23 +76,23 @@ function DraggableCard({
         if (Math.abs(info.offset.x) > 8) draggedRef.current = true
       }}
       onDragEnd={(_, info) => {
+        if (!isFront) return
         if (info.offset.x > 100 || info.velocity.x > 400) onSwipe(1)
         else if (info.offset.x < -100 || info.velocity.x < -400) onSwipe(-1)
       }}
       onTap={() => {
-        if (draggedRef.current) return
+        if (!isFront || draggedRef.current) return
         if (validated) onViewDetail()
         else if (!locked) onChoose()
       }}
-      initial={{ scale: 0.96, opacity: 0.85, y: 4 }}
-      animate={{ scale: 1, opacity: 1, y: 0, x: 0 }}
-      exit={{ x: exitX, opacity: 0, transition: { duration: 0.18, ease: 'easeOut' } }}
+      initial={{ opacity: 0, y: style.y, scale: style.scale }}
+      animate={{ x: 0, y: style.y, scale: style.scale, opacity: style.opacity }}
       transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.6 }}
     >
       <ChallengeCard
         challenge={challenge}
         validated={validated}
-        className={validated ? '' : 'cursor-grab active:cursor-grabbing'}
+        className={isFront && !validated ? 'cursor-grab active:cursor-grabbing' : ''}
       />
     </motion.div>
   )
@@ -95,6 +110,12 @@ interface Props {
   locked?: boolean
 }
 
+interface ExitingCard {
+  token: number
+  challenge: Challenge
+  exitX: number
+}
+
 /** A Tinder-style stacked deck: drag the top card away to browse, tap it to choose it. */
 export function SwipeDeck({
   pool,
@@ -105,87 +126,103 @@ export function SwipeDeck({
   onViewDetail,
   locked = false,
 }: Props) {
-  const [exitX, setExitX] = useState(0)
+  const [exiting, setExiting] = useState<ExitingCard | null>(null)
   const hasHintedRef = useRef(false)
-  // The peek stack (behind1/behind2) only catches up to `index` once the front card's
-  // own exit has actually finished — otherwise it jumps ahead while the front card is
-  // still mid-slide, and the next-next card flashes through where the next card should
-  // still be hidden. A filter switch (new pool) snaps immediately instead of waiting.
-  const [stackIndex, setStackIndex] = useState(index)
+  const tokenRef = useRef(0)
+  const prevIndexRef = useRef(index)
+  const prevPoolRef = useRef(pool)
+  // The index value handleSwipe already animated synchronously — the effect below skips
+  // it, so a drag-driven swipe never gets a second, redundant exit spawned for it.
+  const selfHandledRef = useRef<number | null>(null)
 
-  useEffect(() => {
-    setStackIndex(index)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pool])
+  const spawnExit = (challenge: Challenge, exitX: number) => {
+    setExiting({ token: ++tokenRef.current, challenge, exitX })
+  }
 
-  const current = pool[index]
-  const behind1 = pool[stackIndex + 1]
-  const behind2 = pool[stackIndex + 2]
-
-  // Wraps around at both ends — the deck is a loop, like flipping through the physical stack.
+  // The outgoing card's exit and the rest of the stack's promotion are set up in this
+  // one synchronous handler, so both animations start on the very same render — a real
+  // flick, not a slide-away followed by a delayed catch-up underneath it.
   const handleSwipe = (direction: 1 | -1) => {
     if (pool.length === 0) return
+    const leaving = pool[index]
     const target = (index + direction + pool.length) % pool.length
-    setExitX(direction * 420)
+    hasHintedRef.current = true
+    selfHandledRef.current = target
+    spawnExit(leaving, direction * 420)
     onIndexChange(target)
+  }
+
+  // Any other index change (the prev/next arrows, an external reset) still gets a
+  // graceful exit for the card that falls out of the window, direction derived from
+  // the index delta — a filter switch (new pool) snaps instead, fresh context.
+  useEffect(() => {
+    const prevIndex = prevIndexRef.current
+    const prevPool = prevPoolRef.current
+    prevIndexRef.current = index
+    prevPoolRef.current = pool
+    if (pool !== prevPool || index === prevIndex) return
+    if (selfHandledRef.current === index) {
+      selfHandledRef.current = null
+      return
+    }
+    const leaving = prevPool[prevIndex]
+    if (!leaving) return
+    let exitX = 0
+    if (prevPool.length > 1) {
+      if ((prevIndex + 1) % prevPool.length === index) exitX = 420
+      else if ((prevIndex - 1 + prevPool.length) % prevPool.length === index) exitX = -420
+    }
+    spawnExit(leaving, exitX)
+  }, [index, pool])
+
+  // Built fresh from `index` every render, no gating — the promotion of each card
+  // underneath is what makes the exit read as coordinated instead of sequential.
+  const stack: { challenge: Challenge; depth: number }[] = []
+  const seen = new Set<string>()
+  for (let depth = 0; depth < 3 && depth < pool.length; depth++) {
+    const challenge = pool[(index + depth) % pool.length]
+    if (seen.has(challenge.id)) break
+    seen.add(challenge.id)
+    stack.push({ challenge, depth })
   }
 
   return (
     <div className="relative mx-auto h-[23.5rem] w-64">
-      <AnimatePresence>
-        {behind2 && (
-          <motion.div
-            key={behind2.id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.5 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="absolute inset-x-0 top-6 scale-[0.88]"
-          >
-            <ChallengeCard challenge={behind2} validated={validatedChallengeIds.includes(behind2.id)} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {behind1 && (
-          <motion.div
-            key={behind1.id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.8 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="absolute inset-x-0 top-3 scale-[0.95]"
-          >
-            <ChallengeCard challenge={behind1} validated={validatedChallengeIds.includes(behind1.id)} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* mode="wait" forces each card's exit to finish before the next one mounts. Without it,
-          index changes faster than the ~0.32s exit duration (an entirely normal swiping pace)
-          leave old cards stuck in the DOM instead of being removed, and a real touch/drag can
-          land on one of those dead leftovers instead of the live top card — silently swallowing
-          the gesture, which reads as the deck "getting stuck". */}
-      <AnimatePresence initial={false} mode="wait" onExitComplete={() => setStackIndex(index)}>
-        {current && (
-          <DraggableCard
-            key={current.id}
-            challenge={current}
-            validated={validatedChallengeIds.includes(current.id)}
-            locked={locked}
-            exitX={exitX}
-            onSwipe={(direction) => {
-              hasHintedRef.current = true
-              handleSwipe(direction)
-            }}
-            onChoose={() => onPick(current.id)}
-            onViewDetail={() => onViewDetail(current.id)}
-            hint={!hasHintedRef.current}
-            onHintPlayed={() => {
-              hasHintedRef.current = true
-            }}
+      {stack.map(({ challenge, depth }) => (
+        <StackCard
+          key={challenge.id}
+          challenge={challenge}
+          depth={depth}
+          validated={validatedChallengeIds.includes(challenge.id)}
+          locked={locked}
+          onSwipe={handleSwipe}
+          onChoose={() => onPick(challenge.id)}
+          onViewDetail={() => onViewDetail(challenge.id)}
+          hint={depth === 0 && !hasHintedRef.current}
+          onHintPlayed={() => {
+            hasHintedRef.current = true
+          }}
+        />
+      ))}
+
+      {exiting && (
+        <motion.div
+          key={`exit-${exiting.token}`}
+          className="absolute inset-0"
+          style={{ zIndex: 4 }}
+          initial={{ x: 0, opacity: 1, scale: 1 }}
+          animate={{ x: exiting.exitX, opacity: 0 }}
+          transition={{ duration: 0.22, ease: 'easeOut' }}
+          onAnimationComplete={() =>
+            setExiting((current) => (current?.token === exiting.token ? null : current))
+          }
+        >
+          <ChallengeCard
+            challenge={exiting.challenge}
+            validated={validatedChallengeIds.includes(exiting.challenge.id)}
           />
-        )}
-      </AnimatePresence>
+        </motion.div>
+      )}
     </div>
   )
 }
