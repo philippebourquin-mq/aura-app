@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { animate, motion, useMotionValue, useTransform } from 'framer-motion'
 import { Trophy, UserRound, Users } from 'lucide-react'
 import { CurrentRunBar } from './CurrentRunBar'
+import { LOCKED_ROLE } from '../lib/roleLock'
 import type { Challenge, ChallengeRun, Role } from '../types'
 
 interface Props {
@@ -43,28 +44,30 @@ export function AppHeader({ points, role, onRoleChange, wordmark = false, curren
           <motion.span>{rounded}</motion.span>
         </Link>
 
-        <div className="flex rounded-full border border-black/10 bg-white/70 p-0.5 text-xs font-semibold dark:border-white/10 dark:bg-white/5">
-          <button
-            onClick={() => onRoleChange('lucas')}
-            className={`font-rounded rounded-full px-2.5 py-1 transition ${
-              role === 'lucas'
-                ? 'bg-black text-cream'
-                : 'text-black/40 hover:text-black dark:text-cream/40 dark:hover:text-cream'
-            }`}
-          >
-            Lucas
-          </button>
-          <button
-            onClick={() => onRoleChange('team')}
-            className={`font-rounded rounded-full px-2.5 py-1 transition ${
-              role === 'team'
-                ? 'bg-black text-cream'
-                : 'text-black/40 hover:text-black dark:text-cream/40 dark:hover:text-cream'
-            }`}
-          >
-            Team
-          </button>
-        </div>
+        {!LOCKED_ROLE && (
+          <div className="flex rounded-full border border-black/10 bg-white/70 p-0.5 text-xs font-semibold dark:border-white/10 dark:bg-white/5">
+            <button
+              onClick={() => onRoleChange('lucas')}
+              className={`font-rounded rounded-full px-2.5 py-1 transition ${
+                role === 'lucas'
+                  ? 'bg-black text-cream'
+                  : 'text-black/40 hover:text-black dark:text-cream/40 dark:hover:text-cream'
+              }`}
+            >
+              Lucas
+            </button>
+            <button
+              onClick={() => onRoleChange('team')}
+              className={`font-rounded rounded-full px-2.5 py-1 transition ${
+                role === 'team'
+                  ? 'bg-black text-cream'
+                  : 'text-black/40 hover:text-black dark:text-cream/40 dark:hover:text-cream'
+              }`}
+            >
+              Team
+            </button>
+          </div>
+        )}
 
         <Link
           to="/progression"

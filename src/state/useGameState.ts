@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { CategoryId, Challenge, ChallengeRun, HistoryEntry, HistoryOutcome, JokerId, Role } from '../types'
 import { challenges, challengesByCategory } from '../data/challenges'
 import { CHALLENGE_DURATION_MS } from '../lib/countdown'
+import { LOCKED_ROLE } from '../lib/roleLock'
 
 const STORAGE_KEY = 'aura-game-state-v3'
 
@@ -54,6 +55,7 @@ export function useGameState() {
   const allChallenges = (custom: Challenge[]) => [...challenges, ...custom]
 
   const setRole = useCallback((role: Role) => {
+    if (LOCKED_ROLE) return // this deployment is dedicated to one role — nothing to switch
     setState((s) => ({ ...s, role }))
   }, [])
 
@@ -288,8 +290,12 @@ export function useGameState() {
     setState((s) => ({ ...s, jokersUsed: s.jokersUsed.filter((id) => id !== jokerId) }))
   }, [])
 
+  // The Lucas and Team deployments share the same localStorage (same origin, different
+  // path), so the persisted role is only meaningful in the unlocked (dev) build — here it's
+  // overridden with the deployment's fixed role, transparently, for every `state.role` read
+  // across the app.
   return {
-    state,
+    state: LOCKED_ROLE ? { ...state, role: LOCKED_ROLE } : state,
     setRole,
     lucasPickChallenge,
     teamSendChallenge,
