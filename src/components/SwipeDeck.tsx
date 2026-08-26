@@ -9,13 +9,17 @@ const DEPTH_STYLE = [
   { y: 24, scale: 0.88, opacity: 0.5 },
 ] as const
 
+const ROTATE_RANGE = 220 // px of drag over which rotation reaches its max, matches useTransform below
+
 interface StackCardProps {
   challenge: Challenge
   depth: number
   validated: boolean
   /** A run is already in progress — browsing still works, but tapping can't pick. */
   locked: boolean
-  onSwipe: (direction: 1 | -1) => void
+  /** Carries the live drag position/rotation at release, so the exit picks up from
+   *  exactly where the card visually was instead of resetting to center first. */
+  onSwipe: (direction: 1 | -1, fromX: number) => void
   onChoose: () => void
   /** A validated card can't be picked again — tapping it opens its read-only detail instead. */
   onViewDetail: () => void
@@ -43,7 +47,7 @@ function StackCard({
 }: StackCardProps) {
   const isFront = depth === 0
   const x = useMotionValue(0)
-  const rotate = useTransform(x, [-220, 220], [-14, 14])
+  const rotate = useTransform(x, [-ROTATE_RANGE, ROTATE_RANGE], [-14, 14])
   // A tap that ends a real drag must never also fire the pick action — track actual
   // movement explicitly rather than relying solely on framer-motion's own tap/drag split.
   const draggedRef = useRef(false)
@@ -77,8 +81,8 @@ function StackCard({
       }}
       onDragEnd={(_, info) => {
         if (!isFront) return
-        if (info.offset.x > 100 || info.velocity.x > 400) onSwipe(1)
-        else if (info.offset.x < -100 || info.velocity.x < -400) onSwipe(-1)
+        if (info.offset.x > 100 || info.velocity.x > 400) onSwipe(1, x.get())
+        else if (info.offset.x < -100 || info.velocity.x < -400) onSwipe(-1, x.get())
       }}
       onTap={() => {
         if (!isFront || draggedRef.current) return
@@ -113,7 +117,14 @@ interface Props {
 interface ExitingCard {
   token: number
   challenge: Challenge
+  fromX: number
+  fromRotate: number
   exitX: number
+}
+
+const clampedRotate = (x: number) => {
+  const clamped = Math.max(-ROTATE_RANGE, Math.min(ROTATE_RANGE, x))
+  return (clamped / ROTATE_RANGE) * 14
 }
 
 /** A Tinder-style stacked deck: drag the top card away to browse, tap it to choose it. */
@@ -135,26 +146,30 @@ export function SwipeDeck({
   // it, so a drag-driven swipe never gets a second, redundant exit spawned for it.
   const selfHandledRef = useRef<number | null>(null)
 
-  const spawnExit = (challenge: Challenge, exitX: number) => {
-    setExiting({ token: ++tokenRef.current, challenge, exitX })
+  // fromX is where the card actually was at release (0 for a non-drag change, e.g. the
+  // arrows) — the exit continues from there instead of resetting to center first, which
+  // is what made a released card look like it snapped back before flying away.
+  const spawnExit = (challenge: Challenge, exitX: number, fromX = 0) => {
+    setExiting({ token: ++tokenRef.current, challenge, fromX, fromRotate: clampedRotate(fromX), exitX })
   }
 
   // The outgoing card's exit and the rest of the stack's promotion are set up in this
   // one synchronous handler, so both animations start on the very same render — a real
   // flick, not a slide-away followed by a delayed catch-up underneath it.
-  const handleSwipe = (direction: 1 | -1) => {
+  const handleSwipe = (direction: 1 | -1, fromX: number) => {
     if (pool.length === 0) return
     const leaving = pool[index]
     const target = (index + direction + pool.length) % pool.length
     hasHintedRef.current = true
     selfHandledRef.current = target
-    spawnExit(leaving, direction * 420)
+    spawnExit(leaving, direction * Math.max(420, Math.abs(fromX) + 260), fromX)
     onIndexChange(target)
   }
 
   // Any other index change (the prev/next arrows, an external reset) still gets a
   // graceful exit for the card that falls out of the window, direction derived from
-  // the index delta — a filter switch (new pool) snaps instead, fresh context.
+  // the index delta — a filter switch (new pool) snaps instead, fresh context. There's
+  // no drag here, so it's a plain fade in place if the delta isn't a simple +/-1 step.
   useEffect(() => {
     const prevIndex = prevIndexRef.current
     const prevPool = prevPoolRef.current
@@ -210,8 +225,8 @@ export function SwipeDeck({
           key={`exit-${exiting.token}`}
           className="absolute inset-0"
           style={{ zIndex: 4 }}
-          initial={{ x: 0, opacity: 1, scale: 1 }}
-          animate={{ x: exiting.exitX, opacity: 0 }}
+          initial={{ x: exiting.fromX, rotate: exiting.fromRotate, opacity: 1, scale: 1 }}
+          animate={{ x: exiting.exitX, rotate: exiting.fromRotate, opacity: 0 }}
           transition={{ duration: 0.22, ease: 'easeOut' }}
           onAnimationComplete={() =>
             setExiting((current) => (current?.token === exiting.token ? null : current))
