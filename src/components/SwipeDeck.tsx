@@ -144,12 +144,29 @@ function StackCard({
         if (validated) onViewDetail()
         else if (!locked) onChoose()
       }}
-      // y/scale are the only things ever declaratively animated here — x/rotate are
-      // drag-exclusive (see above), and opacity just fades this card in once its ghost
-      // (if any) is done, never fighting over a shared value with anything else.
+      // x/rotate are absent from `initial` — this card must always MOUNT at x=0 (see
+      // the note above on why). They're back in `animate`, though: once a card has
+      // actually been dragged and released without crossing the swipe threshold, it
+      // demotes to a lower depth but framer's own elastic drag-release snap-back can get
+      // abandoned mid-flight when `drag` flips to false on the very next render (which
+      // happens immediately, since the depth/isFront change is synchronous with the
+      // release) — leaving x stuck at whatever nonzero offset the drag last reached.
+      // That stuck offset is what showed up as a second, misaligned card riding above
+      // the real stack. Declaring x/rotate here too gives every demoted card an explicit
+      // path back to rest, exactly like every card already had before the ghost
+      // rework — animating x back to 0 on an already-dragged card was never the unsafe
+      // case; only ever mounting one away from 0 was.
       initial={{ y: style.y, scale: style.scale, opacity: hiddenBehindGhost ? 0 : 1 }}
-      animate={{ y: style.y, scale: style.scale, opacity: hiddenBehindGhost ? 0 : 1 }}
-      transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.6 }}
+      animate={{ x: 0, y: style.y, scale: style.scale, opacity: hiddenBehindGhost ? 0 : 1, rotate: 0 }}
+      // opacity gets its own near-instant switch, not the shared spring — the ghost
+      // above it lands in exactly the same final pose, so a lingering cross-fade just
+      // double-exposes the real card fading in over whatever's behind it (looked like
+      // grabbing a second, stray card). A hard cut reads as the same seamless reveal
+      // z-index already does, since nothing actually needs to visibly cross-fade here.
+      transition={{
+        default: { type: 'spring', stiffness: 420, damping: 34, mass: 0.6 },
+        opacity: { duration: 0.06 },
+      }}
     >
       <ChallengeCard
         challenge={challenge}
@@ -205,10 +222,33 @@ export function SwipeDeck({
   // ghost spawned by a fast follow-up swipe).
   const [enteringGhost, setEnteringGhost] = useState<EnteringGhost | null>(null)
   const ghostTokenRef = useRef(0)
+  // onAnimationComplete is the fast path for clearing the ghost, but it isn't a hard
+  // guarantee — under load (or in a throttled/slow environment) a nominally-220ms
+  // transition can visibly run past its own duration before the callback fires. Until
+  // it does, the real front card stays hidden while whatever's still settling beneath
+  // it (the demoted previous card, mid-spring, still rotated/offset) is what's actually
+  // visible — reading as a stray, misaligned "extra card". This timeout is a hard upper
+  // bound so that mismatch can never linger indefinitely.
+  useEffect(() => {
+    if (!enteringGhost) return
+    const token = enteringGhost.token
+    const t = setTimeout(() => {
+      setEnteringGhost((current) => (current?.token === token ? null : current))
+    }, TUCK_TRANSITION.duration * 1000 + 150)
+    return () => clearTimeout(t)
+  }, [enteringGhost])
   const hasHintedRef = useRef(false)
   const tokenRef = useRef(0)
   const prevIndexRef = useRef(index)
   const prevPoolRef = useRef(pool)
+  // True for exactly one effect run after a pool swap (a category filter switch) — the
+  // very next index change is usually the picker's own "land on a random card of the
+  // new pool" reset, whose numeric value has no relationship to the OLD pool's index
+  // space. Without this guard, prevIndex (still sized for the old, often much larger,
+  // pool) can pass the forward/backward modulo check against the new pool's length by
+  // sheer coincidence and spawn an exit for prevPool[prevIndex] — out of bounds on a
+  // shrunk pool, undefined, which crashed the render tree entirely.
+  const poolJustChangedRef = useRef(false)
   // The index value handleSwipe already animated synchronously — the effect below skips
   // it, so a drag-driven swipe never gets a second, redundant animation spawned for it.
   const selfHandledRef = useRef<number | null>(null)
@@ -258,15 +298,25 @@ export function SwipeDeck({
   useEffect(() => {
     const prevIndex = prevIndexRef.current
     const prevPool = prevPoolRef.current
+    const poolJustChanged = poolJustChangedRef.current
     prevIndexRef.current = index
     prevPoolRef.current = pool
-    if (pool !== prevPool || index === prevIndex) return
+    if (pool !== prevPool) {
+      poolJustChangedRef.current = true
+      return
+    }
+    poolJustChangedRef.current = false
+    // Skip the very next index change too, not just the pool-change render itself —
+    // that's the picker's own post-switch random reset, and prevIndex at that point
+    // still belongs to the old pool's index space (see the note on poolJustChangedRef).
+    if (poolJustChanged || index === prevIndex) return
     if (selfHandledRef.current === index) {
       selfHandledRef.current = null
       return
     }
     if (prevPool.length > 1 && (prevIndex + 1) % prevPool.length === index) {
-      spawnExit(prevPool[prevIndex])
+      const leaving = prevPool[prevIndex]
+      if (leaving) spawnExit(leaving)
     } else if (prevPool.length > 1 && (prevIndex - 1 + prevPool.length) % prevPool.length === index) {
       const entering = pool[index]
       if (entering) spawnEnteringGhost(entering, 0)
