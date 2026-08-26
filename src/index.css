@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* A dragged card is `position: absolute` + `transform: translateX()` — even fully
+   off-canvas, browsers still fold that transformed position into the page's scrollable
+   overflow, so without this the whole page gains real horizontal scroll while a card
+   is mid-drag (measured: body scrollWidth grew from 390px to 665px during a swipe).
+   That extra scrollable area is what let the page shift under a swipe gesture instead
+   of staying put. */
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   font-family: 'Quicksand', 'Nunito', sans-serif;
 }
