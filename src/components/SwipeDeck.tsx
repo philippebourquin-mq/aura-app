@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { animate, motion, useMotionValue, useMotionValueEvent, useTransform } from 'framer-motion'
+import { animate, motion, useMotionValue, useTransform } from 'framer-motion'
 import { ChallengeCard } from './ChallengeCard'
 import type { Challenge } from '../types'
 
@@ -22,13 +22,13 @@ const TUCK_TRANSITION = { duration: 0.22, ease: 'easeOut' } as const
 // it here would fight that).
 const BEHIND_STACK = { x: 0, y: DEPTH_STYLE[2].y, scale: DEPTH_STYLE[2].scale, rotate: 0 }
 
-// The "peek" card (the one a backward drag pulls from underneath the pile) has to
-// trail the front card's own drag position by more than just their width difference,
-// or it never actually pokes out past the front card's edge — it just stays hidden
-// underneath, covered the whole time. This range is tuned so a full-length drag
-// reveals a clear ~70-90px sliver on the left.
+// The "peek" card (the one a backward drag pulls from underneath the pile) — the front
+// card itself no longer moves at all during a left drag, so this only has to clear its
+// OWN scale-shrunk edge past the front card's fixed, centered edge; tuned so a
+// full-length drag reveals a clear ~70-90px sliver on the left without the peek running
+// off toward the edge of the screen.
 const PEEK_DRAG_RANGE: [number, number] = [-160, 0]
-const PEEK_X_RANGE: [number, number] = [-340, 0]
+const PEEK_X_RANGE: [number, number] = [-90, 0]
 
 function peekXFor(frontX: number) {
   const [inLo, inHi] = PEEK_DRAG_RANGE
@@ -51,8 +51,10 @@ interface StackCardProps {
   /** Carries the live drag position/rotation at release, so a forward exit picks up
    *  from exactly where the card visually was instead of resetting to center first. */
   onSwipe: (direction: 1 | -1, fromX: number) => void
-  /** Fires on every change to the front card's own live x — lets the parent mirror it
-   *  into the "peek" card's position while dragging backward. */
+  /** Fires on every drag tick with the gesture's true offset — lets the parent mirror it
+   *  into the "peek" card's position while dragging backward. Sourced from the drag
+   *  callback's own offset, not from x itself, since x is rigidly pinned at 0 for any
+   *  leftward movement (see dragElastic below) and would never report it. */
   onDragLive: (x: number) => void
   onChoose: () => void
   /** A validated card can't be picked again — tapping it opens its read-only detail instead. */
@@ -100,17 +102,15 @@ function StackCard({
   // movement explicitly rather than relying solely on framer-motion's own tap/drag split.
   const draggedRef = useRef(false)
 
-  // Fires on every change to x — drag-driven AND the elastic snap-back after a
-  // cancelled drag — so the peek card mirrors it continuously, not just on drag ticks.
-  useMotionValueEvent(x, 'change', (latest) => {
-    if (isFront) onDragLive(latest)
-  })
-
   useEffect(() => {
     if (!hint || !isFront) return
     const t = setTimeout(() => {
       if (draggedRef.current) return
-      animate(x, [0, 18, -12, 6, 0], { duration: 1, ease: 'easeInOut' })
+      // Only rightward excursions — a leftward one is rigidly blocked by dragElastic
+      // above (see the note there) only during an actual drag gesture; an imperative
+      // animate() call like this bypasses that entirely and would visibly contradict
+      // "left doesn't move the card" if it dipped negative.
+      animate(x, [0, 18, 4, 12, 0], { duration: 1, ease: 'easeInOut' })
       onHintPlayed()
     }, 700)
     return () => clearTimeout(t)
@@ -126,18 +126,33 @@ function StackCard({
       style={{ x, rotate, zIndex, touchAction: isFront ? 'pan-y' : 'auto' }}
       drag={isFront ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={1}
+      // Asymmetric on purpose: leftward has zero give (elastic 0 = a rigid stop right at
+      // the constraint, x physically cannot go negative), rightward is fully free (1),
+      // matching the already-"perfect" behavior there. This is what actually keeps the
+      // visible card from moving at all on a left drag — a native framer-motion
+      // constraint, not a derived/clamped transform on a second element. An earlier
+      // version tried a second, invisible sibling to own the raw drag while a visible
+      // sibling rendered a clamped copy — confirmed by extensive A/B testing that ANY
+      // sibling motion.div next to the draggable one, regardless of its own content or
+      // animation, permanently breaks that element's drag recognition after a few rapid
+      // swipes. Keeping this to the one element framer already knows how to drag
+      // sidesteps that entirely.
+      dragElastic={{ left: 0, right: 1 }}
       dragMomentum={false}
       onTapStart={() => {
         draggedRef.current = false
       }}
       onDrag={(_, info) => {
         if (Math.abs(info.offset.x) > 8) draggedRef.current = true
+        // x itself never goes negative now (see dragElastic above), so the peek card —
+        // which needs the true, unclamped leftward distance to mirror — reads it from
+        // the gesture's own offset instead of x's value.
+        if (isFront) onDragLive(info.offset.x)
       }}
       onDragEnd={(_, info) => {
         if (!isFront) return
-        if (info.offset.x > 100 || info.velocity.x > 400) onSwipe(1, x.get())
-        else if (info.offset.x < -100 || info.velocity.x < -400) onSwipe(-1, x.get())
+        if (info.offset.x > 100 || info.velocity.x > 400) onSwipe(1, info.offset.x)
+        else if (info.offset.x < -100 || info.velocity.x < -400) onSwipe(-1, info.offset.x)
       }}
       onTap={() => {
         if (!isFront || draggedRef.current) return
@@ -151,10 +166,8 @@ function StackCard({
       // abandoned mid-flight when `drag` flips to false on the very next render (which
       // happens immediately, since the depth/isFront change is synchronous with the
       // release) — leaving x stuck at whatever nonzero offset the drag last reached.
-      // That stuck offset is what showed up as a second, misaligned card riding above
-      // the real stack. Declaring x/rotate here too gives every demoted card an explicit
-      // path back to rest, exactly like every card already had before the ghost
-      // rework — animating x back to 0 on an already-dragged card was never the unsafe
+      // Declaring x/rotate here too gives every demoted card an explicit path back to
+      // rest — animating x back to 0 on an already-dragged card was never the unsafe
       // case; only ever mounting one away from 0 was.
       initial={{ y: style.y, scale: style.scale, opacity: hiddenBehindGhost ? 0 : 1 }}
       animate={{ x: 0, y: style.y, scale: style.scale, opacity: hiddenBehindGhost ? 0 : 1, rotate: 0 }}
@@ -256,10 +269,6 @@ export function SwipeDeck({
   // "peek" card underneath can trail it in real time.
   const liveDragX = useMotionValue(0)
   const peekX = useTransform(liveDragX, PEEK_DRAG_RANGE, PEEK_X_RANGE, { clamp: true })
-  // Stable across renders — useMotionValueEvent inside StackCard resubscribes whenever
-  // this reference changes, and a fresh closure on every SwipeDeck render (points
-  // counter ticking, etc.) was tearing that subscription down and rebuilding it mid-
-  // gesture under rapid swiping.
   const onDragLive = useCallback((v: number) => liveDragX.set(v), [liveDragX])
 
   // fromX is where the card actually was at release (0 for a non-drag change, e.g. the
