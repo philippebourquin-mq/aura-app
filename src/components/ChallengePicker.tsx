@@ -148,7 +148,7 @@ export function ChallengePicker({
         </motion.button>
       </div>
 
-      <div className="mb-8 flex h-4 items-center justify-center px-6">
+      <div className="mb-5 flex h-4 items-center justify-center px-6">
         <AnimatePresence mode="wait">
           {filter !== 'all' && (
             <motion.p
@@ -181,7 +181,7 @@ export function ChallengePicker({
             locked={locked}
           />
 
-          <div className="mt-6 flex items-center justify-center gap-4">
+          <div className="mt-4 flex items-center justify-center gap-4">
             <button
               onClick={() => setIndex((i) => (i - 1 + pool.length) % pool.length)}
               className="rounded-full border border-black/10 p-2 text-black/50 transition hover:bg-black/5 dark:border-white/10 dark:text-cream/50 dark:hover:bg-white/10"

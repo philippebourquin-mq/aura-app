@@ -61,12 +61,12 @@ export function Home({ game, openTakeover }: Props) {
       />
 
       <motion.div
-        className="mx-auto max-w-lg px-5 pt-2 pb-10"
+        className="mx-auto max-w-lg px-5 pt-2 pb-6"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
       >
-        <h1 className="font-display mb-10 mt-2 text-[2.1rem] leading-[1.05] text-black dark:text-cream">
+        <h1 className="font-display mb-6 mt-1 text-[2.1rem] leading-[1.05] text-black dark:text-cream">
           {locked
             ? 'Parcours les défis'
             : state.role === 'lucas'

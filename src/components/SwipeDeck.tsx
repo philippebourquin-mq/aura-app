@@ -383,8 +383,19 @@ export function SwipeDeck({
 
   const peekChallenge = pool.length > 1 ? pool[(index - 1 + pool.length) % pool.length] : null
 
+  // Height is "however much of the *dynamic* viewport height is left over once
+  // everything else on the page (header, title, filter row, pagination, hint text) has
+  // its share" — 468px is that everything-else height, measured on the reference
+  // layout, so this is exact rather than a guess at a percentage: the deck plus the
+  // rest of the page adds up to precisely 100dvh, no more, so the page never needs to
+  // scroll just to show it. clamp()'s floor (260px) accepts a little residual scroll on
+  // the shortest real phones rather than shrinking the card past legible; its ceiling
+  // (23.5rem) is the original fixed size, so nothing shrinks at all on a tall-enough
+  // screen. Width is intentionally left to `auto`, derived from aspect-[32/47] — the
+  // same 256:376 ratio as the old fixed w-64/h-[23.5rem] pair — so the card's
+  // proportions stay identical at every size instead of getting squashed.
   return (
-    <div className="relative mx-auto h-[23.5rem] w-64">
+    <div className="relative mx-auto aspect-[32/47] h-[clamp(260px,calc(100dvh_-_468px),23.5rem)] w-auto">
       {peekChallenge && (
         <motion.div
           className="pointer-events-none absolute inset-0"

@@ -178,7 +178,7 @@ function AppShell() {
 function App() {
   return (
     <HashRouter>
-      <div className="min-h-screen bg-cream pb-8 dark:bg-neutral-950">
+      <div className="min-h-dvh bg-cream pb-4 dark:bg-neutral-950">
         <AppShell />
       </div>
     </HashRouter>
