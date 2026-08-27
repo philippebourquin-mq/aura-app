@@ -185,6 +185,7 @@ function StackCard({
       <ChallengeCard
         challenge={challenge}
         validated={validated}
+        size="fill"
         className={isFront && !validated ? 'cursor-grab active:cursor-grabbing' : ''}
       />
     </motion.div>
@@ -385,23 +386,29 @@ export function SwipeDeck({
 
   // Height is "however much of the *dynamic* viewport height is left over once
   // everything else on the page (header, title, filter row, pagination, hint text) has
-  // its share" — 468px is that everything-else height, measured on the reference
-  // layout, so this is exact rather than a guess at a percentage: the deck plus the
-  // rest of the page adds up to precisely 100dvh, no more, so the page never needs to
-  // scroll just to show it. clamp()'s floor (260px) accepts a little residual scroll on
-  // the shortest real phones rather than shrinking the card past legible; its ceiling
-  // (23.5rem) is the original fixed size, so nothing shrinks at all on a tall-enough
-  // screen. Width is intentionally left to `auto`, derived from aspect-[32/47] — the
-  // same 256:376 ratio as the old fixed w-64/h-[23.5rem] pair — so the card's
-  // proportions stay identical at every size instead of getting squashed.
+  // its share". 468px is that everything-else height, measured on the reference
+  // layout, so this is exact rather than a guess at a percentage. clamp()'s floor
+  // (260px) accepts a little residual scroll on the shortest real phones rather than
+  // shrinking the card past legible; its ceiling (23.5rem) is the original fixed size,
+  // so nothing shrinks at all on a tall-enough screen. Width is intentionally left to
+  // `auto`, derived from aspect-[63/90] — the actual card ratio (see ChallengeCard) —
+  // so the card's proportions stay identical at every size instead of getting
+  // squashed. Every card rendered inside this box uses size="fill": ChallengeCard used
+  // to size *itself* (a fixed w-64 regardless of this container), which let it quietly
+  // outgrow this box on any viewport shorter than the reference one and physically
+  // overlap the pagination row below instead of being constrained by it.
   return (
-    <div className="relative mx-auto aspect-[32/47] h-[clamp(260px,calc(100dvh_-_468px),23.5rem)] w-auto">
+    <div className="relative mx-auto aspect-[63/90] h-[clamp(260px,calc(100dvh_-_468px),23.5rem)] w-auto">
       {peekChallenge && (
         <motion.div
           className="pointer-events-none absolute inset-0"
           style={{ x: peekX, y: BEHIND_STACK.y, scale: BEHIND_STACK.scale, zIndex: 0 }}
         >
-          <ChallengeCard challenge={peekChallenge} validated={validatedChallengeIds.includes(peekChallenge.id)} />
+          <ChallengeCard
+            challenge={peekChallenge}
+            validated={validatedChallengeIds.includes(peekChallenge.id)}
+            size="fill"
+          />
         </motion.div>
       )}
 
@@ -443,6 +450,7 @@ export function SwipeDeck({
           <ChallengeCard
             challenge={exiting.challenge}
             validated={validatedChallengeIds.includes(exiting.challenge.id)}
+            size="fill"
           />
         </motion.div>
       )}
@@ -464,6 +472,7 @@ export function SwipeDeck({
           <ChallengeCard
             challenge={enteringGhost.challenge}
             validated={validatedChallengeIds.includes(enteringGhost.challenge.id)}
+            size="fill"
           />
         </motion.div>
       )}
@@ -485,6 +494,7 @@ export function SwipeDeck({
           <ChallengeCard
             challenge={droppingGhost.challenge}
             validated={validatedChallengeIds.includes(droppingGhost.challenge.id)}
+            size="fill"
           />
         </motion.div>
       )}

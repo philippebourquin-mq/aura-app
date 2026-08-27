@@ -7,7 +7,11 @@ interface Props {
   challenge: Challenge
   validated?: boolean
   className?: string
-  size?: 'md' | 'lg'
+  /** 'fill' stretches to the parent's own box instead of sizing itself — for the swipe
+   *  deck, whose card slots are already sized (responsively) by their container; giving
+   *  the card its own fixed width there let it silently outgrow that container instead
+   *  of being constrained by it. */
+  size?: 'md' | 'lg' | 'fill'
 }
 
 /** Full-size card, proportioned like the physical poker-format cards (63x90mm). */
@@ -17,9 +21,11 @@ export function ChallengeCard({ challenge, validated = false, className = '', si
 
   const Icon = categoryIcons[challenge.categoryId]
 
+  const sizeClass = size === 'fill' ? 'h-full w-full' : `aspect-[63/90] ${size === 'lg' ? 'w-80' : 'w-64'}`
+
   return (
     <div
-      className={`relative flex aspect-[63/90] ${size === 'lg' ? 'w-80' : 'w-64'} flex-col overflow-hidden rounded-[1.75rem] border-2 border-black/10 bg-cream shadow-[0_14px_34px_-10px_rgba(0,0,0,0.35)] dark:border-white/10 dark:bg-neutral-900 ${
+      className={`relative flex ${sizeClass} flex-col overflow-hidden rounded-[1.75rem] border-2 border-black/10 bg-cream shadow-[0_14px_34px_-10px_rgba(0,0,0,0.35)] dark:border-white/10 dark:bg-neutral-900 ${
         validated ? 'grayscale' : ''
       } ${className}`}
     >
