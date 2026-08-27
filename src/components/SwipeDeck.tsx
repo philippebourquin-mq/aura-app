@@ -171,14 +171,15 @@ function StackCard({
       // case; only ever mounting one away from 0 was.
       initial={{ y: style.y, scale: style.scale, opacity: hiddenBehindGhost ? 0 : 1 }}
       animate={{ x: 0, y: style.y, scale: style.scale, opacity: hiddenBehindGhost ? 0 : 1, rotate: 0 }}
-      // opacity gets its own near-instant switch, not the shared spring — the ghost
-      // above it lands in exactly the same final pose, so a lingering cross-fade just
-      // double-exposes the real card fading in over whatever's behind it (looked like
-      // grabbing a second, stray card). A hard cut reads as the same seamless reveal
-      // z-index already does, since nothing actually needs to visibly cross-fade here.
+      // opacity gets an instant switch, not the shared spring — the ghost above it lands
+      // in EXACTLY the same final pose (same card, x:0 y:0 scale:1), so there's nothing
+      // to actually cross-fade between; a 0-60ms tween still passes through semi-
+      // transparent frames where whatever's behind briefly shows through the real card,
+      // reading as a flicker. Zero duration is what makes this as invisible as the
+      // z-index swap right next to it, which can't be animated at all either.
       transition={{
         default: { type: 'spring', stiffness: 420, damping: 34, mass: 0.6 },
-        opacity: { duration: 0.06 },
+        opacity: { duration: 0 },
       }}
     >
       <ChallengeCard
@@ -216,6 +217,11 @@ interface EnteringGhost {
   fromX: number
 }
 
+interface DroppingGhost {
+  token: number
+  challenge: Challenge
+}
+
 /** A Tinder-style stacked deck: drag the top card away to browse, tap it to choose it. */
 export function SwipeDeck({
   pool,
@@ -250,6 +256,16 @@ export function SwipeDeck({
     }, TUCK_TRANSITION.duration * 1000 + 150)
     return () => clearTimeout(t)
   }, [enteringGhost])
+  // The card at the back of the visible stack (depth 2) isn't actually fully hidden —
+  // its lower edge pokes out below the cards in front of it, which is what reads as a
+  // stacked pile rather than a single flat card. A backward swipe drops it out of the
+  // 3-deep visible window entirely (it's not part of the new stack), and since it's a
+  // real unmount with no exit transition of its own, that visible sliver would just
+  // vanish outright mid-reshuffle — a one-frame pop right when everything else is
+  // smoothly resettling. This ghost keeps it around just long enough to fade out
+  // instead, mirroring the exiting/entering ghosts above for the same reason.
+  const [droppingGhost, setDroppingGhost] = useState<DroppingGhost | null>(null)
+  const dropTokenRef = useRef(0)
   const hasHintedRef = useRef(false)
   const tokenRef = useRef(0)
   const prevIndexRef = useRef(index)
@@ -282,6 +298,10 @@ export function SwipeDeck({
     setEnteringGhost({ token: ++ghostTokenRef.current, id: challenge.id, challenge, fromX })
   }
 
+  const spawnDroppingGhost = (challenge: Challenge) => {
+    setDroppingGhost({ token: ++dropTokenRef.current, challenge })
+  }
+
   // Forward (direction 1): the dragged front card is truly leaving the visible window —
   // it gets the transient "tucks in behind the deck" exit. Backward (direction -1): the
   // dragged front card doesn't leave at all, it demotes to depth 1, which the persisted
@@ -297,6 +317,10 @@ export function SwipeDeck({
     } else {
       const entering = pool[target]
       if (entering) spawnEnteringGhost(entering, peekXFor(fromX))
+      if (pool.length > 3) {
+        const droppingOut = pool[(index + 2) % pool.length]
+        if (droppingOut) spawnDroppingGhost(droppingOut)
+      }
     }
     onIndexChange(target)
   }
@@ -329,6 +353,10 @@ export function SwipeDeck({
     } else if (prevPool.length > 1 && (prevIndex - 1 + prevPool.length) % prevPool.length === index) {
       const entering = pool[index]
       if (entering) spawnEnteringGhost(entering, 0)
+      if (prevPool.length > 3) {
+        const droppingOut = prevPool[(prevIndex + 2) % prevPool.length]
+        if (droppingOut) spawnDroppingGhost(droppingOut)
+      }
     }
   }, [index, pool])
 
@@ -425,6 +453,27 @@ export function SwipeDeck({
           <ChallengeCard
             challenge={enteringGhost.challenge}
             validated={validatedChallengeIds.includes(enteringGhost.challenge.id)}
+          />
+        </motion.div>
+      )}
+
+      {droppingGhost && (
+        <motion.div
+          key={`drop-${droppingGhost.token}`}
+          className="pointer-events-none absolute inset-0"
+          // Sits at the very back — the real stack's depth-1/2 cards (both above this in
+          // z-index) already cover most of it; only the sliver they don't reach fades.
+          style={{ zIndex: 0 }}
+          initial={{ y: BEHIND_STACK.y, scale: BEHIND_STACK.scale, opacity: 1 }}
+          animate={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          onAnimationComplete={() =>
+            setDroppingGhost((current) => (current?.token === droppingGhost.token ? null : current))
+          }
+        >
+          <ChallengeCard
+            challenge={droppingGhost.challenge}
+            validated={validatedChallengeIds.includes(droppingGhost.challenge.id)}
           />
         </motion.div>
       )}

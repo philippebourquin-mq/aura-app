@@ -8,9 +8,16 @@
    is mid-drag (measured: body scrollWidth grew from 390px to 665px during a swipe).
    That extra scrollable area is what let the page shift under a swipe gesture instead
    of staying put. */
+/* Without this, a horizontal swipe gesture can be interpreted by the browser itself as
+   an edge-navigation/rubber-band gesture (Safari's swipe-back preview, Chrome's
+   overscroll glow) even though nothing in the app is meant to scroll horizontally at
+   all — the page visibly nudges or bounces along with the drag on a real touch device
+   in a way desktop mouse-based testing can't reproduce. This tells the browser there's
+   nothing to hand off to natively. */
 html,
 body {
   overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 body {
